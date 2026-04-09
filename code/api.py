@@ -34,6 +34,7 @@ class GenerateResponse(BaseModel):
     diff:           str            = Field(..., description="unified diff 格式的修改前后对比")
     changed:        bool           = Field(..., description="是否有实际修改")
     patch_note:     str            = Field(..., description="修改说明")
+    merge_method:   str            = Field(..., description="使用的合并方式(ast/text)")
 
 
 # ── 应用生命周期 ───────────────────────────────────
@@ -90,6 +91,7 @@ async def generate(req: GenerateRequest):
         diff=result["diff"],
         changed=result["changed"],
         patch_note=result["patch_note"],
+        merge_method=result["merge_method"],
     )
 
 

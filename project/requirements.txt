@@ -2,4 +2,4 @@ torch
 transformers
 faiss-cpu
 pydantic
-sentence-transformers
+sentence-transformerslibcst

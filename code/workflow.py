@@ -9,7 +9,7 @@ from typing import Optional
 
 from retriever   import search_code
 from llm_client  import build_prompt, call_llm, parse_llm_response
-from patch_merger import merge
+from patch_merger import smart_merge
 
 
 def detect_mode(instruction: str, source_code: Optional[str]) -> str:
@@ -45,6 +45,7 @@ async def run_workflow(instruction: str, source_code: Optional[str]) -> dict:
     """
     mode = detect_mode(instruction, source_code)
     retrieved_code = None
+    has_source_code = mode == "direct_edit"
 
     # ── Step 1: 确定基础草稿 ──────────────────────────
     if mode == "retrieval_generation":
@@ -63,27 +64,32 @@ async def run_workflow(instruction: str, source_code: Optional[str]) -> dict:
         base_code = source_code.strip()
 
     # ── Step 2: 构造 Prompt 并调用 LLM ───────────────
-    prompt = build_prompt(instruction, base_code, mode)
+    prompt = build_prompt(instruction, base_code, has_source_code)
     llm_raw = await call_llm(prompt)
 
     # ── Step 3: 解析 LLM 输出 ─────────────────────────
     parsed = parse_llm_response(llm_raw, base_code)
 
     # ── Step 4: 合并，生成 diff ───────────────────────
-    merge_result = merge(
-        before_code=parsed["before_code"],
-        after_code=parsed["after_code"],
-        patch_note=parsed["patch"],
+    merge_result = smart_merge(
+        base_code=parsed.original_code,
+        patch_code=parsed.modified_code,
+        use_ast=True
     )
+
+    # 尊重解析结果的修改标记
+    # 这里我们结合了两边的判断。如果大模型输出"无需修改"，parsed.modified 为 False
+    changed = merge_result.modified and parsed.modified
 
     return {
         "mode":           mode,
         "retrieved_code": retrieved_code,
-        "before_code":    parsed["before_code"],
-        "after_code":     merge_result["final_code"],
-        "final_code":     merge_result["final_code"],
-        "diff":           merge_result["diff"],
-        "changed":        merge_result["changed"],
-        "patch_note":     merge_result["patch_note"],
-        "llm_raw":        llm_raw,
+        "before_code":    parsed.original_code,
+        "after_code":     merge_result.final_code,
+        "final_code":     merge_result.final_code,
+        "diff":           merge_result.unified_diff,
+        "changed":        changed,
+        "patch_note":     parsed.explanation,
+        "merge_method":   merge_result.merge_method,
+        "llm_raw":        parsed.raw,
     }
