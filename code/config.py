@@ -21,4 +21,4 @@ LLM_TIMEOUT      = 60.0     # 请求超时秒数
 EMBED_MODEL_NAME  = "BAAI/bge-m3"
 RERANK_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
 RECALL_K          = 5        # 第一阶段向量召回数量
-RERANK_THRESHOLD  = 0.0      # 重排分数阈值，低于此值降级为纯生成
+RERANK_THRESHOLD  = 0.8      # 重排分数阈值，低于此值降级为纯生成
