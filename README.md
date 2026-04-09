@@ -141,5 +141,5 @@ curl -X POST "http://127.0.0.0:8000/generate" \
 # 七、各模块文档索引
 
 *   📄 **[成员qyy 技术报告：模型调用与代码融合重构](docs/member_qyy_report.md)** 
-    （详细记录了 `llm_client.py` 和 `patch_merger.py` 的重构设计、AST 合并策略、接口契约及边缘踩坑记录，由覃钰源撰写）
+    （详细记录了 `llm_client.py` 和 `patch_merger.py` 的重构设计、AST 合并策略、接口契约及边缘踩坑记录）
 *   *(等待其他成员更新他们的专属模块文档...)*
