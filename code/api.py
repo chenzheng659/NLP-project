@@ -12,8 +12,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from retriever import get_retriever
-from workflow  import run_workflow
+from .retriever import get_retriever
+from .workflow  import run_workflow
 
 
 # ── 请求 / 响应 Schema ─────────────────────────────

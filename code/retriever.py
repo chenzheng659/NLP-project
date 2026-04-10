@@ -11,7 +11,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent / "project"))
 from retriever_and_schemas import CodeRetriever
 
-import config
+from . import config
 
 _retriever_instance: Optional[CodeRetriever] = None
 

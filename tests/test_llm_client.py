@@ -5,10 +5,10 @@ import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
 import httpx
 
-# 将 code 目录加入 PYTHONPATH 使得测试能够正常引入
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../code')))
+# 将项目根目录加入 PYTHONPATH，使得测试能够通过包路径引入模块
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from llm_client import parse_llm_response, call_llm, ParsedResponse
+from code.llm_client import parse_llm_response, call_llm, ParsedResponse
 
 def test_parse_normal():
     raw_response = """<think>推理过程...</think>
@@ -63,8 +63,8 @@ def foo():
 
 
 @pytest.mark.asyncio
-@patch('llm_client.httpx.AsyncClient.post', new_callable=AsyncMock)
-@patch('llm_client.asyncio.sleep', new_callable=AsyncMock)
+@patch('code.llm_client.httpx.AsyncClient.post', new_callable=AsyncMock)
+@patch('code.llm_client.asyncio.sleep', new_callable=AsyncMock)
 async def test_call_llm_retry(mock_sleep, mock_post):
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()

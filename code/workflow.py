@@ -7,9 +7,9 @@ workflow.py - 工作流引擎（核心）
 """
 from typing import Optional
 
-from retriever   import search_code
-from llm_client  import build_prompt, call_llm, parse_llm_response
-from patch_merger import smart_merge
+from .retriever   import search_code
+from .llm_client  import build_prompt, call_llm, parse_llm_response
+from .patch_merger import smart_merge
 
 
 def detect_mode(instruction: str, source_code: Optional[str]) -> str:
