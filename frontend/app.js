@@ -42,6 +42,9 @@ function copyCode(elementId) {
     const orig = btn.textContent;
     btn.textContent = '✓ 已复制';
     setTimeout(() => { btn.textContent = orig; }, 1800);
+  }).catch(() => {
+    btn.textContent = '✗ 复制失败';
+    setTimeout(() => { btn.textContent = '复制'; }, 1800);
   });
 }
 
@@ -89,20 +92,29 @@ async function handleSubmit() {
   }
 }
 
+// ── Mode / merge label config ────────────────────────────────────────────────
+const MODE_CONFIG = {
+  retrieval_generation: { label: '模式一：检索生成', chipClass: 'chip-mode-retrieval' },
+  direct_edit:          { label: '模式二：直接编辑', chipClass: 'chip-mode-edit' },
+};
+
+const MERGE_CONFIG = {
+  ast:  { label: '合并: AST',  chipClass: 'chip-merge-ast' },
+  text: { label: '合并: TEXT', chipClass: 'chip-merge-text' },
+};
+
 // ── 渲染结果 ────────────────────────────────────────
 function renderResult(data) {
   // Meta chips
-  const modeLabel = data.mode === 'retrieval_generation' ? '模式一：检索生成' : '模式二：直接编辑';
-  const modeClass = data.mode === 'retrieval_generation' ? 'chip-mode-retrieval' : 'chip-mode-edit';
+  const modeConf    = MODE_CONFIG[data.mode]  || { label: data.mode,         chipClass: 'chip-mode-edit' };
+  const mergeConf   = MERGE_CONFIG[data.merge_method] || { label: data.merge_method, chipClass: 'chip-merge-text' };
   const changedLabel = data.changed ? '有修改' : '无修改';
   const changedClass = data.changed ? 'chip-changed-yes' : 'chip-changed-no';
-  const mergeClass   = data.merge_method === 'ast' ? 'chip-merge-ast' : 'chip-merge-text';
-  const mergeLabel   = `合并: ${data.merge_method.toUpperCase()}`;
 
   document.getElementById('result-meta').innerHTML = `
-    <span class="meta-chip ${modeClass}">${modeLabel}</span>
+    <span class="meta-chip ${modeConf.chipClass}">${modeConf.label}</span>
     <span class="meta-chip ${changedClass}">${changedLabel}</span>
-    <span class="meta-chip ${mergeClass}">${mergeLabel}</span>
+    <span class="meta-chip ${mergeConf.chipClass}">${mergeConf.label}</span>
   `;
 
   // Diff
