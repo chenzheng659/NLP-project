@@ -14,7 +14,7 @@ def generate(instruction: str, source_code: str):
     if not instruction.strip():
         return (
             "",  # mode
-            "⚠️ 请填写自然语言指令后再提交。",  # patch_note
+            "请填写自然语言指令后再提交。",  # patch_note
             gr.update(visible=False),  # retrieved_code_row
             "",  # retrieved_code
             "",  # before_code
@@ -76,7 +76,7 @@ def generate(instruction: str, source_code: str):
 with gr.Blocks(title="EfficientEdit 代码生成/编辑系统") as demo:
     gr.Markdown(
         """
-        # 🛠️ EfficientEdit 代码生成 / 编辑系统
+        # EfficientEdit 代码生成 / 编辑系统
         基于「检索 + 生成」混合工作流，支持两种模式：
         - **模式一（检索生成）**：仅填写自然语言指令，系统自动检索最匹配的代码草稿，再按指令修改。
         - **模式二（直接编辑）**：同时提供原始代码与编辑指令，系统直接对代码进行修改。
@@ -95,7 +95,7 @@ with gr.Blocks(title="EfficientEdit 代码生成/编辑系统") as demo:
                 language="python",
                 lines=10,
             )
-            submit_btn = gr.Button("🚀 提交", variant="primary")
+            submit_btn = gr.Button("提交", variant="primary")
 
         with gr.Column():
             mode_output = gr.Textbox(label="当前模式 (mode)", interactive=False)
