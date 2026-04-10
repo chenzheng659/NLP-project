@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EfficientEdit · 代码生成与编辑</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- highlight.js for syntax highlighting (vendored locally) -->
+  <link rel="stylesheet" href="vendor/atom-one-dark.min.css" />
+  <script src="vendor/highlight.bundle.min.js"></script>
+</head>
+<body>
+  <!-- ── Header ─────────────────────────────────── -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">EfficientEdit</span>
+      </div>
+      <p class="header-subtitle">检索增强代码生成 &amp; 智能编辑平台</p>
+      <div class="header-badges">
+        <span class="badge badge-blue">RAG</span>
+        <span class="badge badge-purple">DeepSeek</span>
+        <span class="badge badge-green">AST 融合</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ───────────────────────────────────── -->
+  <main>
+    <!-- Input Panel -->
+    <section class="card input-card">
+      <h2 class="section-title">
+        <span class="section-icon">✏️</span> 输入
+      </h2>
+
+      <div class="form-group">
+        <label for="instruction">
+          自然语言指令
+          <span class="required">*</span>
+          <span class="label-hint">描述你希望生成或修改的代码功能</span>
+        </label>
+        <textarea
+          id="instruction"
+          placeholder="例：计算一个列表的加权平均值 / 给这个函数加上类型提示"
+          rows="4"
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="source-code">
+          原始代码
+          <span class="optional">可选</span>
+          <span class="label-hint">填写后进入直接编辑模式；留空则自动从知识库检索草稿</span>
+        </label>
+        <textarea
+          id="source-code"
+          placeholder="# 粘贴你想要修改的代码（不填则使用检索生成模式）"
+          rows="10"
+          spellcheck="false"
+        ></textarea>
+      </div>
+
+      <div class="mode-hint" id="mode-hint">
+        <span class="mode-dot mode-retrieval"></span>
+        <span id="mode-hint-text">当前将使用 <strong>模式一（检索生成）</strong>：系统自动从知识库检索最相关代码草稿</span>
+      </div>
+
+      <!-- API endpoint config -->
+      <details class="api-config">
+        <summary>⚙️ API 配置</summary>
+        <div class="api-config-body">
+          <label for="api-url">后端地址</label>
+          <input type="text" id="api-url" value="http://localhost:8000" />
+        </div>
+      </details>
+
+      <button class="btn-primary" id="submit-btn" onclick="handleSubmit()">
+        <span id="btn-label">🚀 生成代码</span>
+        <span id="btn-spinner" class="spinner hidden"></span>
+      </button>
+    </section>
+
+    <!-- Result Panel -->
+    <section class="card result-card" id="result-panel" style="display:none;">
+      <div class="result-header">
+        <h2 class="section-title">
+          <span class="section-icon">📊</span> 结果
+        </h2>
+        <div id="result-meta" class="result-meta"></div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar">
+        <button class="tab active" onclick="switchTab('diff')" id="tab-diff">Diff 对比</button>
+        <button class="tab" onclick="switchTab('before')" id="tab-before">修改前</button>
+        <button class="tab" onclick="switchTab('after')" id="tab-after">修改后</button>
+        <button class="tab" onclick="switchTab('retrieved')" id="tab-retrieved" style="display:none;">检索草稿</button>
+      </div>
+
+      <div class="tab-content" id="tab-content-diff">
+        <div class="code-block-wrapper">
+          <button class="copy-btn" onclick="copyCode('diff-code')">复制</button>
+          <pre><code class="language-diff" id="diff-code"></code></pre>
+        </div>
+      </div>
+
+      <div class="tab-content hidden" id="tab-content-before">
+        <div class="code-block-wrapper">
+          <button class="copy-btn" onclick="copyCode('before-code')">复制</button>
+          <pre><code class="language-python" id="before-code"></code></pre>
+        </div>
+      </div>
+
+      <div class="tab-content hidden" id="tab-content-after">
+        <div class="code-block-wrapper">
+          <button class="copy-btn" onclick="copyCode('after-code')">复制</button>
+          <pre><code class="language-python" id="after-code"></code></pre>
+        </div>
+      </div>
+
+      <div class="tab-content hidden" id="tab-content-retrieved">
+        <div class="code-block-wrapper">
+          <button class="copy-btn" onclick="copyCode('retrieved-code')">复制</button>
+          <pre><code class="language-python" id="retrieved-code"></code></pre>
+        </div>
+      </div>
+
+      <!-- Patch Note -->
+      <div class="patch-note" id="patch-note-box"></div>
+    </section>
+
+    <!-- Error Panel -->
+    <div class="error-box hidden" id="error-box">
+      <span class="error-icon">⚠️</span>
+      <span id="error-msg"></span>
+    </div>
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────── -->
+  <footer>
+    <p>EfficientEdit · 基于 BGE-M3 + FAISS 检索 &amp; DeepSeek 代码模型 &amp; AST 级代码融合</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
