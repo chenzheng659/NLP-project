@@ -11,7 +11,7 @@ DATASET_PATH = str(BASE_DIR / "code.json")
 PROMPT_TEMPLATE_PATH = str(BASE_DIR / "prompt_templates.txt")
 
 # ── LLM API ───────────────────────────────────────
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "your_api_key_here")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-38d4d9060e134a748c17d6aff857bfb4")
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 DEEPSEEK_MODEL   = "deepseek-coder"
 LLM_TEMPERATURE  = 0.2      # 低温保证代码稳定性
