@@ -3,7 +3,8 @@ import requests
 import json
 
 # ── 后端 API 地址（开发阶段可先用 Mock）──────────────────────────────
-BACKEND_URL = "http://localhost:8000/generate"
+BACKEND_URL = "http://127.0.0.1:8000/generate"
+
 
 # ── Mock 函数（后端未就绪时使用）────────────────────────────────────
 def mock_generate(source_code, instruction):
@@ -15,7 +16,7 @@ def mock_generate(source_code, instruction):
         result = source_code + "\n\n# --- 融合补丁 ---\n" + patch
     else:
         mode = "模式一（检索生成模式）"
-        draft = f"# [Mock 检索结果]\n# 从私有代码库中检索到的最匹配函数\ndef retrieved_function(data):\n    \"\"\"与需求最相近的历史代码\"\"\"\n    return data"
+        draft = f'# [Mock 检索结果]\n# 从私有代码库中检索到的最匹配函数\ndef retrieved_function(data):\n    """与需求最相近的历史代码"""\n    return data'
         patch = f"# [Mock 补丁]\n# 根据需求「{instruction}」生成的补丁\ndef patched_function(data, extra_param=None):\n    result = retrieved_function(data)\n    # 新增逻辑\n    return result"
         result = patch
 
@@ -76,7 +77,12 @@ def process(source_code, instruction, use_mock):
 
         return base_draft, patch_code, final_code, log
     except Exception as e:
-        return "", "", "", f" 后端请求失败：{e}\n\n 提示：可勾选「使用 Mock 模式」在本地测试前端。"
+        return (
+            "",
+            "",
+            "",
+            f" 后端请求失败：{e}\n\n 提示：可勾选「使用 Mock 模式」在本地测试前端。",
+        )
 
 
 def clear_all():
@@ -244,7 +250,6 @@ label span, .gr-form label {
 
 # ── 构建界面 ─────────────────────────────────────────────────────────
 with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as demo:
-
     # 顶部标题
     gr.HTML("""
     <div id="header-box">
@@ -262,7 +267,6 @@ with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as de
     """)
 
     with gr.Row(equal_height=False):
-
         # ── 左侧：输入区 ──────────────────────────────────────────────
         with gr.Column(scale=5, elem_id="input-panel"):
             gr.HTML('<div class="section-label"> 输入</div>')
@@ -289,7 +293,9 @@ with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as de
                     label="使用 Mock 模式（后端未启动时勾选）",
                     value=False,
                 )
-                gr.HTML('<p style="color:#4a8fa8;font-size:0.78rem;margin:4px 0 0;">Mock 模式下不调用真实后端，仅用于前端调试。</p>')
+                gr.HTML(
+                    '<p style="color:#4a8fa8;font-size:0.78rem;margin:4px 0 0;">Mock 模式下不调用真实后端，仅用于前端调试。</p>'
+                )
 
         # ── 右侧：输出区 ──────────────────────────────────────────────
         with gr.Column(scale=7, elem_id="output-panel"):
@@ -334,7 +340,14 @@ with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as de
     btn_clear.click(
         fn=clear_all,
         inputs=[],
-        outputs=[source_code, instruction, base_draft, patch_code, final_code, log_output],
+        outputs=[
+            source_code,
+            instruction,
+            base_draft,
+            patch_code,
+            final_code,
+            log_output,
+        ],
     )
 
     # ── 底部说明 ─────────────────────────────────────────────────────
