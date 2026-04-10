@@ -2,10 +2,10 @@ import sys
 import os
 import pytest
 
-# 将 code 目录加入 PYTHONPATH 使得测试能够正常引入
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../code')))
+# 将项目根目录加入 PYTHONPATH，使得测试能够通过包路径引入模块
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from patch_merger import smart_merge, MergeResult
+from code.patch_merger import smart_merge, MergeResult
 
 def test_ast_merge_normal():
     base_code = """
