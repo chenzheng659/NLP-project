@@ -6,6 +6,7 @@ llm_client.py - LLM 调用模块
   3. 调用 DeepSeek API
   4. 返回结构化结果（补丁 + 修改前后对比）
 """
+
 import re
 import asyncio
 from pathlib import Path
@@ -28,6 +29,7 @@ class ParsedResponse:
 
 # ── 提示词加载 ─────────────────────────────────────
 
+
 def _load_templates() -> dict:
     """解析 prompt_templates.txt，返回 {section_name: content} 字典"""
     templates = {}
@@ -49,9 +51,11 @@ def _load_templates() -> dict:
 
         if current_key:
             templates[current_key] = "\n".join(current_lines).strip()
-            
+
     except FileNotFoundError:
-        raise FileNotFoundError(f"提示词模板文件缺失: {config.PROMPT_TEMPLATE_PATH}，请确保该文件存在。")
+        raise FileNotFoundError(
+            f"提示词模板文件缺失: {config.PROMPT_TEMPLATE_PATH}，请确保该文件存在。"
+        )
     except Exception as e:
         raise RuntimeError(f"读取提示词模板文件时发生错误: {e}")
 
@@ -116,6 +120,7 @@ def build_prompt(instruction: str, base_code: str, has_source_code: bool) -> str
 
 # ── API 调用 ───────────────────────────────────────
 
+
 async def call_llm(prompt: str) -> str:
     """异步调用 DeepSeek API，带重试机制"""
     headers = {
@@ -127,14 +132,16 @@ async def call_llm(prompt: str) -> str:
         "messages": [{"role": "user", "content": prompt}],
         "temperature": config.LLM_TEMPERATURE,
     }
-    
+
     max_retries = 2
     delay = 1.0
-    
+
     for attempt in range(max_retries + 1):
         try:
             async with httpx.AsyncClient(timeout=config.LLM_TIMEOUT) as client:
-                resp = await client.post(config.DEEPSEEK_API_URL, json=payload, headers=headers)
+                resp = await client.post(
+                    config.DEEPSEEK_API_URL, json=payload, headers=headers
+                )
                 resp.raise_for_status()
                 return resp.json()["choices"][0]["message"]["content"].strip()
         except httpx.HTTPError as e:
@@ -150,6 +157,7 @@ async def call_llm(prompt: str) -> str:
 
 # ── 响应解析 ───────────────────────────────────────
 
+
 def parse_llm_response(raw: str, base_code: str) -> ParsedResponse:
     """
     从 LLM 输出中解析出结构化字段。
@@ -157,16 +165,16 @@ def parse_llm_response(raw: str, base_code: str) -> ParsedResponse:
     """
     # 1. 剔除 <think> 标签，防止推理过程干扰
     raw_cleaned = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
-    
-    # 2. 检测"无修改"关键字兜底
+
+    # 2. 检测"无修改"关键字兜底 (仅在有 base_code 且不是完全新建代码时生效)
     no_change_keywords = ["无修改", "no changes needed", "无需修改", "不需要修改"]
-    if any(k in raw_cleaned.lower() for k in no_change_keywords):
+    if base_code.strip() and any(k in raw_cleaned.lower() for k in no_change_keywords):
         return ParsedResponse(
             original_code=base_code,
             modified_code=base_code,
             explanation="无需修改",
             modified=False,
-            raw=raw
+            raw=raw,
         )
 
     def extract_block(label: str) -> Optional[str]:
@@ -176,7 +184,7 @@ def parse_llm_response(raw: str, base_code: str) -> ParsedResponse:
         return m.group(1).strip() if m else None
 
     before = extract_block("修改前") or base_code
-    after  = extract_block("修改后")
+    after = extract_block("修改后")
 
     # 提取修改说明
     note_match = re.search(r"###\s*修改说明\s*\n(.+)", raw_cleaned)
@@ -184,7 +192,9 @@ def parse_llm_response(raw: str, base_code: str) -> ParsedResponse:
 
     # 兜底：如果格式不对（例如模型只输出了一个代码块），提取最后那个代码块作为 after
     if after is None:
-        fallback_blocks = re.findall(r"```(?:python)?\n(.*?)```", raw_cleaned, re.DOTALL)
+        fallback_blocks = re.findall(
+            r"```(?:python)?\n(.*?)```", raw_cleaned, re.DOTALL
+        )
         if fallback_blocks:
             after = fallback_blocks[-1].strip()
         else:
@@ -198,5 +208,5 @@ def parse_llm_response(raw: str, base_code: str) -> ParsedResponse:
         modified_code=after if is_modified else base_code,
         explanation=patch_note,
         modified=is_modified,
-        raw=raw
+        raw=raw,
     )
