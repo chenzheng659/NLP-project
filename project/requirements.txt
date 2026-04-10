@@ -1,5 +1,0 @@
-torch
-transformers
-faiss-cpu
-pydantic
-sentence-transformerslibcst

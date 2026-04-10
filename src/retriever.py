@@ -9,9 +9,9 @@ from typing import Optional
 
 # 将 project 目录加入路径，复用已有的 CodeRetriever
 sys.path.insert(0, str(Path(__file__).parent.parent / "project"))
-from retriever_and_schemas import CodeRetriever
+from .retriever_and_schemas import CodeRetriever
 
-import config
+from . import config
 
 _retriever_instance: Optional[CodeRetriever] = None
 

@@ -40,17 +40,16 @@
 
 ```text
 /
-├── project/
+├── data/
 │   ├── code.json                 # 私有代码知识库（包含数十个 Python 工具函数与算法）
-│   ├── retriever_and_schemas.py  # 检索器底层实现（基于 BGE-M3 向量化 + FAISS 索引双阶检索）
-│   ├── prompt_templates.txt      # 双模式的系统提示词模板库
-│   └── requirements.txt          # 核心底层依赖库声明
-├── code/
+│   └── prompt_templates.txt      # 双模式的系统提示词模板库
+├── src/
 │   ├── api.py                    # FastAPI 服务入口，暴露核心的 /generate 接口
 │   ├── workflow.py               # 核心工作流引擎，负责串联检索、调用与合并模块
 │   ├── llm_client.py             # 大模型调用与响应解析（含重试、容错、<think>过滤等）
 │   ├── patch_merger.py           # 代码融合模块（基于 libcst 的 AST 级智能合并 + 文本兜底）
 │   ├── retriever.py              # 检索器适配层（对底层 retriever 模块进行单例封装）
+│   ├── retriever_and_schemas.py  # 检索器底层实现（基于 BGE-M3 向量化 + FAISS 索引双阶检索）
 │   └── config.py                 # 全局配置文件（API Key、路径、模型超时与阈值等）
 ├── docs/
 │   └── member_c_report.md        # 成员C模块（模型调用与代码融合）的详细技术与重构文档
@@ -63,29 +62,33 @@
 # 五、快速启动
 
 ## 1. 环境安装
-确保本地已安装 Python 3.8+，然后在项目根目录下执行：
+确保本地已安装 Python 3.8+（推荐使用 conda 创建隔离环境，例如 Python 3.10），然后在项目根目录下执行：
 ```bash
-pip install -r project/requirements.txt
+pip install -r requirements.txt
 ```
+*(注：当前的 requirements.txt 已配置并适配了适用于 8GB 显存显卡的包，包括 CUDA 12.1 版本的 PyTorch)*
 
 ## 2. 配置
-运行前，请打开 `code/config.py`，根据实际情况修改配置参数：
+运行前，请打开 `src/config.py`，根据实际情况修改配置参数：
 *   **`DEEPSEEK_API_KEY`**: 填入你自己的 DeepSeek API 密钥。
 *   **`LLM_TIMEOUT`**: 大模型请求超时时间（默认 60.0 秒）。
 *   **`RECALL_K`**: FAISS 第一阶段向量召回的数量（默认 5）。
 *   **`RERANK_THRESHOLD`**: 交叉编码器重排的及格分数阈值，低于此值将放弃草稿进入纯生成模式（默认 0.0）。
+*   **模型**: 默认使用了轻量级的 `BAAI/bge-base-zh-v1.5` 与 `BAAI/bge-reranker-base`。
 
 ## 3. 启动服务
-在项目根目录下，使用 `uvicorn` 启动 FastAPI 后端服务：
+在项目根目录下，使用 `uvicorn` 启动 FastAPI 后端服务（请勿在 src 目录内启动以避免导包错误）：
 ```bash
-uvicorn code.api:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## 4. 接口调用示例
 
 ### 示例 A：模式一（仅自然语言）
+**⚠️ 提示：在 WSL 或挂代理的系统环境中，请加 `--noproxy "*"` 防止本地请求被拦截。**
+
 ```bash
-curl -X POST "http://127.0.0.0:8000/generate" \
+curl --noproxy "*" -X POST "http://127.0.0.1:8000/generate" \
      -H "Content-Type: application/json" \
      -d '{
            "instruction": "计算一个列表的加权平均值"
@@ -107,7 +110,7 @@ curl -X POST "http://127.0.0.0:8000/generate" \
 
 ### 示例 B：模式二（原始代码 + 编辑指令）
 ```bash
-curl -X POST "http://127.0.0.0:8000/generate" \
+curl --noproxy "*" -X POST "http://127.0.0.1:8000/generate" \
      -H "Content-Type: application/json" \
      -d '{
            "instruction": "给这个函数加上类型提示",
