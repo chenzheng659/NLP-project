@@ -66,7 +66,6 @@
 ```bash
 pip install -r requirements.txt
 ```
-*(注：当前的 requirements.txt 已配置并适配了适用于 8GB 显存显卡的包，包括 CUDA 12.1 版本的 PyTorch)*
 
 ## 2. 配置
 运行前，请打开 `src/config.py`，根据实际情况修改配置参数：
