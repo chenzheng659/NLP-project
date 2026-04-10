@@ -40,6 +40,10 @@
 
 ```text
 /
+├── frontend/
+│   ├── index.html                # Web 前端主页面（双模式输入、结果展示）
+│   ├── style.css                 # 暗色主题样式表
+│   └── app.js                    # 前端交互逻辑（API 调用、高亮、Tab 切换）
 ├── project/
 │   ├── code.json                 # 私有代码知识库（包含数十个 Python 工具函数与算法）
 │   ├── retriever_and_schemas.py  # 检索器底层实现（基于 BGE-M3 向量化 + FAISS 索引双阶检索）
@@ -81,7 +85,26 @@ pip install -r project/requirements.txt
 uvicorn code.api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## 4. 接口调用示例
+## 4. 启动前端界面
+
+在后端服务运行后，可以直接用浏览器打开前端页面：
+
+```bash
+# 方式一：直接在浏览器中打开（无需额外服务器）
+open frontend/index.html
+
+# 方式二：使用 Python 内置 HTTP 服务器（推荐，避免浏览器 CORS 限制）
+python -m http.server 3000 --directory frontend
+# 然后访问 http://localhost:3000
+```
+
+**前端功能说明**：
+- 填写「自然语言指令」并点击「生成代码」（或按 `Ctrl/Cmd + Enter`）
+- 「原始代码」留空 → **模式一（检索生成）**；填写后 → **模式二（直接编辑）**
+- 结果页面展示：Diff 对比 / 修改前 / 修改后 / 检索草稿（模式一限定）及修改说明
+- 右上角「⚙️ API 配置」可修改后端地址（默认 `http://localhost:8000`）
+
+## 5. 接口调用示例
 
 ### 示例 A：模式一（仅自然语言）
 ```bash
@@ -136,7 +159,7 @@ curl -X POST "http://127.0.0.0:8000/generate" \
 | 张明钰 | 数据集 + 提示词 | `code.json`, `prompt_templates.txt` |
 | 覃钰源 | 模型调用 + 代码融合 | `llm_client.py`, `patch_merger.py` |
 | 胡博雄 | 后端服务 + 工作流引擎 | `api.py`, `workflow.py` |
-| 梁辰飞 | 前端界面 + 测试演示 | gradio 前端, `tests/` |
+| 梁辰飞 | 前端界面 + 测试演示 | `frontend/index.html`, `frontend/app.js`, `tests/` |
 
 # 七、各模块文档索引
 
