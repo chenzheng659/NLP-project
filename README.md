@@ -139,9 +139,3 @@ curl --noproxy "*" -X POST "http://127.0.0.1:8000/generate" \
 | 覃钰源 | 模型调用 + 代码融合 | `llm_client.py`, `patch_merger.py` |
 | 胡博雄 | 后端服务 + 工作流引擎 | `api.py`, `workflow.py` |
 | 梁辰飞 | 前端界面 + 测试演示 | gradio 前端, `tests/` |
-
-# 七、各模块文档索引
-
-*   📄 **[成员qyy 技术报告：模型调用与代码融合重构](docs/member_qyy_report.md)** 
-    （详细记录了 `llm_client.py` 和 `patch_merger.py` 的重构设计、AST 合并策略、接口契约及边缘踩坑记录）
-*   *(等待其他成员更新他们的专属模块文档...)*
