@@ -1,6 +1,51 @@
 import gradio as gr
 import requests
 import json
+import os
+import sys
+import subprocess
+import threading
+import atexit
+import time
+
+# ── 自动启动后端服务 ─────────────────────────────────────────────────
+_CODE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "code")
+_backend_proc: "subprocess.Popen | None" = None
+
+
+def _start_backend():
+    """在后台线程中以子进程方式启动 FastAPI 后端（端口 8000）"""
+    global _backend_proc
+    try:
+        _backend_proc = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "api:app",
+             "--host", "0.0.0.0", "--port", "8000", "--log-level", "warning"],
+            cwd=_CODE_DIR,
+        )
+        _backend_proc.wait()
+    except Exception as e:
+        print(f"[警告] 后端自动启动失败：{e}\n"
+              "请手动执行：cd code && uvicorn api:app --host 0.0.0.0 --port 8000")
+
+
+def _cleanup_backend():
+    if _backend_proc and _backend_proc.poll() is None:
+        _backend_proc.terminate()
+
+
+atexit.register(_cleanup_backend)
+
+_backend_thread = threading.Thread(target=_start_backend, daemon=True)
+_backend_thread.start()
+# 轮询等待后端就绪（最多等 120 秒，避免 ML 模型加载超时）
+_HEALTH_URL = "http://localhost:8000/health"
+for _i in range(40):
+    try:
+        if requests.get(_HEALTH_URL, timeout=2).status_code == 200:
+            break
+    except Exception:
+        pass
+    time.sleep(3)
 
 # ── 后端 API 地址（开发阶段可先用 Mock）──────────────────────────────
 BACKEND_URL = "http://localhost:8000/generate"
@@ -75,8 +120,24 @@ def process(source_code, instruction, use_mock):
         )
 
         return base_draft, patch_code, final_code, log
+    except requests.exceptions.ConnectionError:
+        return "", "", "", (
+            "⚠ 后端服务未就绪（连接被拒绝）\n\n"
+            "💡 提示：\n"
+            "  1. 后端正在加载 ML 模型（首次启动需要几分钟），请稍候再试。\n"
+            "  2. 或勾选「使用 Mock 模式」在本地调试前端，无需后端。\n"
+            "  3. 也可手动启动：cd code && uvicorn api:app --host 0.0.0.0 --port 8000"
+        )
+    except requests.exceptions.Timeout:
+        return "", "", "", (
+            "⚠ 后端请求超时\n\n"
+            "💡 提示：模型推理可能耗时较长，请增大超时时间或稍后重试。"
+        )
     except Exception as e:
-        return "", "", "", f" 后端请求失败：{e}\n\n 提示：可勾选「使用 Mock 模式」在本地测试前端。"
+        return "", "", "", (
+            f"⚠ 后端请求失败：{e}\n\n"
+            "💡 提示：可勾选「使用 Mock 模式」在本地调试前端，无需后端。"
+        )
 
 
 def clear_all():

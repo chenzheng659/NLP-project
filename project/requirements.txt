@@ -2,4 +2,10 @@ torch
 transformers
 faiss-cpu
 pydantic
-sentence-transformerslibcst
+sentence-transformers
+libcst
+gradio
+requests
+fastapi
+uvicorn
+httpx
