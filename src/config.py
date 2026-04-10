@@ -2,6 +2,7 @@
 config.py - 全局配置管理
 所有可调参数集中在此，方便统一修改
 """
+
 import os
 from pathlib import Path
 
@@ -13,12 +14,12 @@ PROMPT_TEMPLATE_PATH = str(BASE_DIR / "prompt_templates.txt")
 # ── LLM API ───────────────────────────────────────
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-ffe8e439a464450b9843a4faaa377594")
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
-DEEPSEEK_MODEL   = "deepseek-coder"
-LLM_TEMPERATURE  = 0.2      # 低温保证代码稳定性
-LLM_TIMEOUT      = 60.0     # 请求超时秒数
+DEEPSEEK_MODEL = "deepseek-coder"
+LLM_TEMPERATURE = 0.2  # 低温保证代码稳定性
+LLM_TIMEOUT = 60.0  # 请求超时秒数
 
 # ── 检索参数 ──────────────────────────────────────
-EMBED_MODEL_NAME  = "BAAI/bge-base-zh-v1.5"
+EMBED_MODEL_NAME = "BAAI/bge-base-zh-v1.5"
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
-RECALL_K          = 5        # 第一阶段向量召回数量
-RERANK_THRESHOLD  = 0.0      # 重排分数阈值，低于此值降级为纯生成
+RECALL_K = 5  # 第一阶段向量召回数量
+RERANK_THRESHOLD = 0.8  # 重排分数阈值，低于此值降级为纯生成
