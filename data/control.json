@@ -1,0 +1,163 @@
+[
+  {
+    "function_name": "SimplePID",
+    "code": "class SimplePID:\n    \"\"\"\n    A simple and easy to use PID controller.\n\n    Attributes:\n        Kp (float): Proportional gain.\n        Ki (float): Integral gain.\n        Kd (float): Derivative gain.\n        setpoint (float): Target value.\n        sample_time (float): Minimum time between output calculations.\n        output_limits (tuple): (lower, upper) output limits.\n    \"\"\"\n    def __init__(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0, sample_time=0.01, output_limits=(None, None)):\n        self.Kp = Kp\n        self.Ki = Ki\n        self.Kd = Kd\n        self.setpoint = setpoint\n        self.sample_time = sample_time\n        self.output_limits = output_limits\n        self._integral = 0.0\n        self._last_error = 0.0\n        self._last_time = None\n        self._last_output = None\n\n    def reset(self):\n        \"\"\"Reset controller state.\"\"\"\n        self._integral = 0.0\n        self._last_error = 0.0\n        self._last_time = None\n        self._last_output = None\n\n    def __call__(self, measurement, dt=None):\n        \"\"\"\n        Compute control output.\n\n        Args:\n            measurement: Current process variable.\n            dt: Time step (uses real time if None).\n\n        Returns:\n            Control output.\n        \"\"\"\n        import time\n        now = time.monotonic() if hasattr(time, 'monotonic') else time.time()\n        if self._last_time is None:\n            dt = self.sample_time\n        else:\n            dt = min(now - self._last_time, self.sample_time * 10)\n        if dt <= 0:\n            dt = self.sample_time\n\n        error = self.setpoint - measurement\n        proportional = self.Kp * error\n        self._integral += self.Ki * error * dt\n        derivative = self.Kd * (error - self._last_error) / dt if dt > 0 else 0.0\n\n        output = proportional + self._integral + derivative\n        if self.output_limits[0] is not None:\n            output = max(self.output_limits[0], output)\n        if self.output_limits[1] is not None:\n            output = min(self.output_limits[1], output)\n\n        self._last_error = error\n        self._last_time = now\n        self._last_output = output\n        return output\n",
+    "docstring": "A simple and easy to use PID controller with output limiting and integral anti-windup protection.",
+    "signature": "(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0, sample_time=0.01, output_limits=(None, None))",
+    "category": "control"
+  },
+  {
+    "function_name": "AntiWindupPID",
+    "code": "class AntiWindupPID:\n    \"\"\"\n    PID controller with back-calculation anti-windup.\n\n    When output saturates, the integral term is reduced by feeding back\n    the saturation error multiplied by an anti-windup gain.\n    \"\"\"\n    def __init__(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0,\n                 output_limits=(-float('inf'), float('inf')),\n                 anti_windup_gain=0.1, sample_time=0.01):\n        self.Kp = Kp\n        self.Ki = Ki\n        self.Kd = Kd\n        self.setpoint = setpoint\n        self.output_min, self.output_max = output_limits\n        self.anti_windup_gain = anti_windup_gain\n        self.sample_time = sample_time\n        self._integral = 0.0\n        self._last_measurement = None\n        self._last_time = None\n\n    def reset(self):\n        self._integral = 0.0\n        self._last_measurement = None\n        self._last_time = None\n\n    def update(self, measurement):\n        import time\n        now = time.monotonic() if hasattr(time, 'monotonic') else time.time()\n        if self._last_time is None:\n            dt = self.sample_time\n        else:\n            dt = min(now - self._last_time, self.sample_time * 10)\n        if dt <= 0:\n            dt = self.sample_time\n\n        error = self.setpoint - measurement\n        proportional = self.Kp * error\n        self._integral += self.Ki * error * dt\n        derivative = 0.0\n        if self._last_measurement is not None and dt > 0:\n            derivative = self.Kd * (self._last_measurement - measurement) / dt\n\n        output_unsat = proportional + self._integral + derivative\n        output = max(self.output_min, min(output_unsat, self.output_max))\n\n        if self.Ki != 0 and output != output_unsat:\n            windup_error = (output_unsat - output) * self.anti_windup_gain\n            self._integral += windup_error * dt\n            self._integral = max(self.output_min, min(self._integral, self.output_max))\n\n        self._last_measurement = measurement\n        self._last_time = now\n        return output\n",
+    "docstring": "PID controller with back-calculation anti-windup to prevent integral windup during output saturation.",
+    "signature": "(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0, output_limits=(-float('inf'), float('inf')), anti_windup_gain=0.1, sample_time=0.01)",
+    "category": "control"
+  },
+  {
+    "function_name": "ziegler_nichols_open_loop",
+    "code": "def ziegler_nichols_open_loop(K, L, T, controller='PID'):\n    \"\"\"\n    Ziegler-Nichols open-loop (reaction curve) tuning.\n\n    Args:\n        K: Process gain (steady-state change / step size)\n        L: Dead time (seconds)\n        T: Time constant (seconds)\n        controller: 'P', 'PI', or 'PID'\n\n    Returns:\n        (Kp, Ki, Kd) gains. Ki = Kp/Ti, Kd = Kp*Td.\n    \"\"\"\n    if K <= 0 or L <= 0 or T <= 0:\n        raise ValueError(\"K, L, T must be positive\")\n    if controller.upper() == 'P':\n        Kp = 1 / K\n        Ki, Kd = 0.0, 0.0\n    elif controller.upper() == 'PI':\n        Kp = 0.9 / K\n        Ki = Kp / (L / 0.3)  # Ti = L/0.3\n        Kd = 0.0\n    elif controller.upper() == 'PID':\n        Kp = 1.2 / K\n        Ki = Kp / (2 * L)   # Ti = 2L\n        Kd = Kp * (0.5 * L) # Td = 0.5L\n    else:\n        raise ValueError(\"Controller must be P, PI, or PID\")\n    return Kp, Ki, Kd\n",
+    "docstring": "Ziegler-Nichols open-loop tuning method for PID controllers based on process reaction curve.",
+    "signature": "(K, L, T, controller='PID')",
+    "category": "tuning"
+  },
+  {
+    "function_name": "cohen_coon_tuning",
+    "code": "def cohen_coon_tuning(K, L, T, controller='PID'):\n    \"\"\"\n    Cohen-Coon tuning for first-order-plus-dead-time models.\n\n    Args:\n        K: Process gain\n        L: Dead time (seconds)\n        T: Time constant (seconds)\n        controller: 'P', 'PI', or 'PID'\n\n    Returns:\n        (Kp, Ki, Kd) gains.\n    \"\"\"\n    if K <= 0 or L <= 0 or T <= 0:\n        raise ValueError(\"K, L, T must be positive\")\n    tau = L / T\n    if controller.upper() == 'P':\n        Kp = (1 / K) * (1 + tau / 3)\n        Ki, Kd = 0.0, 0.0\n    elif controller.upper() == 'PI':\n        Kp = (1 / K) * (0.9 + tau / 12)\n        Ti = L * (30 + 3 * tau) / (9 + 20 * tau)\n        Ki = Kp / Ti\n        Kd = 0.0\n    elif controller.upper() == 'PID':\n        Kp = (1 / K) * (1.35 + tau / 4)\n        Ti = L * (32 + 6 * tau) / (13 + 8 * tau)\n        Td = L * 4 / (11 + 2 * tau)\n        Ki = Kp / Ti\n        Kd = Kp * Td\n    else:\n        raise ValueError(\"Controller must be P, PI, or PID\")\n    return Kp, Ki, Kd\n",
+    "docstring": "Cohen-Coon tuning method for PID controllers, better for processes with significant dead time.",
+    "signature": "(K, L, T, controller='PID')",
+    "category": "tuning"
+  },
+  {
+    "function_name": "lqr",
+    "code": "import numpy as np\nfrom scipy.linalg import solve_continuous_are\n\ndef lqr(A, B, Q, R, N=None):\n    \"\"\"\n    Solve continuous-time LQR problem.\n\n    Finds optimal gain K such that u = -K x minimizes\n    J = ∫ (x^T Q x + u^T R u + 2 x^T N u) dt.\n\n    Args:\n        A: State matrix (n x n)\n        B: Input matrix (n x m)\n        Q: State cost matrix (n x n, symmetric positive semidefinite)\n        R: Input cost matrix (m x m, symmetric positive definite)\n        N: Cross term (n x m, optional, default zero)\n\n    Returns:\n        K: Optimal gain matrix (m x n)\n        S: Solution to Riccati equation\n        E: Closed-loop eigenvalues\n    \"\"\"\n    if N is None:\n        N = np.zeros((A.shape[0], B.shape[1]))\n    # Solve continuous Riccati equation\n    S = solve_continuous_are(A, B, Q, R, s=N)\n    # Compute gain\n    K = np.linalg.solve(R, (B.T @ S + N.T))\n    # Closed-loop eigenvalues\n    E = np.linalg.eigvals(A - B @ K)\n    return K, S, E\n",
+    "docstring": "Solve continuous-time Linear Quadratic Regulator (LQR) problem using Riccati equation.",
+    "signature": "(A, B, Q, R, N=None)",
+    "category": "lqr"
+  },
+  {
+    "function_name": "dlqr",
+    "code": "import numpy as np\nfrom scipy.linalg import solve_discrete_are\n\ndef dlqr(A, B, Q, R, N=None):\n    \"\"\"\n    Solve discrete-time LQR problem.\n\n    Finds optimal gain K such that u = -K x minimizes\n    J = Σ (x_k^T Q x_k + u_k^T R u_k + 2 x_k^T N u_k).\n\n    Args:\n        A: Discrete state matrix (n x n)\n        B: Discrete input matrix (n x m)\n        Q: State cost matrix (n x n)\n        R: Input cost matrix (m x m)\n        N: Cross term (n x m, optional)\n\n    Returns:\n        K: Optimal gain matrix (m x n)\n        S: Solution to discrete Riccati equation\n        E: Closed-loop eigenvalues\n    \"\"\"\n    if N is None:\n        N = np.zeros((A.shape[0], B.shape[1]))\n    S = solve_discrete_are(A, B, Q, R, s=N)\n    K = np.linalg.solve(R + B.T @ S @ B, (B.T @ S @ A + N.T))\n    E = np.linalg.eigvals(A - B @ K)\n    return K, S, E\n",
+    "docstring": "Solve discrete-time Linear Quadratic Regulator (LQR) problem using discrete Riccati equation.",
+    "signature": "(A, B, Q, R, N=None)",
+    "category": "lqr"
+  },
+  {
+    "function_name": "lqr_observer",
+    "code": "import numpy as np\nfrom scipy.linalg import solve_continuous_are\n\ndef lqr_observer(A, C, Q, R):\n    \"\"\"\n    Design LQR observer (Kalman filter) by duality.\n\n    Solves for observer gain L such that the estimator dynamics (A - L C) are stable.\n    The problem is dual to LQR: (A^T, C^T, Q, R).\n\n    Args:\n        A: State matrix (n x n)\n        C: Output matrix (p x n)\n        Q: Process noise covariance (n x n)\n        R: Measurement noise covariance (p x p)\n\n    Returns:\n        L: Observer gain matrix (n x p)\n        S: Solution to Riccati equation\n    \"\"\"\n    # Dual problem\n    Ad = A.T\n    Bd = C.T\n    Qd = Q\n    Rd = R\n    S = solve_continuous_are(Ad, Bd, Qd, Rd)\n    L = (S @ Bd @ np.linalg.inv(Rd)).T\n    return L, S\n",
+    "docstring": "Design observer gain for state estimation using LQR duality (Kalman filter design).",
+    "signature": "(A, C, Q, R)",
+    "category": "lqr"
+  },
+  {
+    "function_name": "BasicMPC",
+    "code": "import numpy as np\nfrom scipy.optimize import minimize\n\nclass BasicMPC:\n    \"\"\"\n    Basic Model Predictive Control for linear systems.\n\n    Solves a quadratic programming problem at each step:\n        min Σ (x_k - ref)^T Q (x_k - ref) + u_k^T R u_k\n        subject to x_{k+1} = A x_k + B u_k and input/state constraints.\n    \"\"\"\n    def __init__(self, A, B, Q, R, horizon=10, umin=None, umax=None):\n        self.A = np.array(A)\n        self.B = np.array(B)\n        self.Q = np.array(Q)\n        self.R = np.array(R)\n        self.N = horizon\n        self.nx = A.shape[0]\n        self.nu = B.shape[1]\n        self.umin = umin if umin is not None else -np.inf\n        self.umax = umax if umax is not None else np.inf\n\n    def predict(self, x0, u_seq):\n        \"\"\"Predict state trajectory given initial state and control sequence.\"\"\"\n        x = x0.copy()\n        traj = [x]\n        for k in range(self.N):\n            x = self.A @ x + self.B @ u_seq[k]\n            traj.append(x)\n        return np.array(traj)\n\n    def cost(self, u_flat, x0, ref):\n        \"\"\"Compute cost for a given control sequence.\"\"\"\n        u_seq = u_flat.reshape(self.N, self.nu)\n        x_traj = self.predict(x0, u_seq)\n        cost = 0.0\n        for k in range(self.N):\n            dx = x_traj[k] - ref\n            cost += dx.T @ self.Q @ dx\n            cost += u_seq[k].T @ self.R @ u_seq[k]\n        dx = x_traj[-1] - ref\n        cost += dx.T @ self.Q @ dx  # terminal cost\n        return cost\n\n    def solve(self, x0, ref):\n        \"\"\"Solve MPC optimization problem.\"\"\"\n        u0 = np.zeros(self.N * self.nu)\n        bounds = [(self.umin, self.umax)] * (self.N * self.nu)\n        result = minimize(self.cost, u0, args=(x0, ref), method='SLSQP', bounds=bounds)\n        if result.success:\n            u_opt = result.x.reshape(self.N, self.nu)\n            return u_opt[0]  # return first control input\n        else:\n            return np.zeros(self.nu)\n",
+    "docstring": "Basic Model Predictive Controller for linear systems with quadratic cost and optional constraints.",
+    "signature": "(self, A, B, Q, R, horizon=10, umin=None, umax=None)",
+    "category": "mpc"
+  },
+  {
+    "function_name": "do_mpc_wrapper",
+    "code": "def do_mpc_wrapper_example():\n    \"\"\"\n    Example wrapper for do-mpc library.\n\n    This function demonstrates how to set up a nonlinear MPC controller\n    using the do-mpc toolbox. Requires do-mpc installation.\n\n    Returns:\n        A configured do-mpc controller object.\n    \"\"\"\n    # This is a template; actual implementation requires do-mpc installed\n    # import do_mpc\n    # model = do_mpc.model.Model('continuous')\n    # model.set_variable('_x', 'pos', 0.0)\n    # model.set_variable('_u', 'force', 0.0)\n    # model.set_rhs('pos', model.x['force'])\n    # model.setup()\n    # mpc = do_mpc.controller.MPC(model)\n    # mpc.settings.set_param(n_horizon=20, t_step=0.1)\n    # mpc.setup()\n    # return mpc\n    pass\n",
+    "docstring": "Wrapper example for do-mpc library to set up nonlinear MPC.",
+    "signature": "()",
+    "category": "mpc"
+  },
+  {
+    "function_name": "StateSpace",
+    "code": "import numpy as np\n\nclass StateSpace:\n    \"\"\"\n    Linear state-space system representation.\n\n    dx/dt = A x + B u\n    y = C x + D u\n    \"\"\"\n    def __init__(self, A, B, C=None, D=None, dt=None):\n        self.A = np.array(A, dtype=float)\n        self.B = np.array(B, dtype=float)\n        self.C = np.array(C) if C is not None else np.eye(self.A.shape[0])\n        self.D = np.array(D) if D is not None else np.zeros((self.C.shape[0], self.B.shape[1]))\n        self.dt = dt\n        self.nx = self.A.shape[0]\n        self.nu = self.B.shape[1]\n        self.ny = self.C.shape[0]\n\n    def discretize(self, dt):\n        \"\"\"Discretize continuous system using zero-order hold.\"\"\"\n        n = self.nx\n        M = np.zeros((2*n, 2*n))\n        M[:n, :n] = self.A\n        M[:n, n:] = self.B\n        Mexp = scipy.linalg.expm(M * dt) if 'scipy' in globals() else np.eye(2*n)\n        Ad = Mexp[:n, :n]\n        Bd = Mexp[:n, n:]\n        return StateSpace(Ad, Bd, self.C, self.D, dt=dt)\n\n    def simulate(self, u_func, x0, t_span, dt):\n        \"\"\"Simulate the system response.\"\"\"\n        import numpy as np\n        n_steps = int((t_span[1] - t_span[0]) / dt)\n        t = np.linspace(t_span[0], t_span[1], n_steps+1)\n        x = np.zeros((n_steps+1, self.nx))\n        y = np.zeros((n_steps+1, self.ny))\n        x[0] = x0\n        for i in range(n_steps):\n            u = u_func(t[i], x[i])\n            if self.dt is not None:\n                # Discrete\n                x[i+1] = self.A @ x[i] + self.B @ u\n            else:\n                # Continuous Euler\n                x[i+1] = x[i] + dt * (self.A @ x[i] + self.B @ u)\n            y[i+1] = self.C @ x[i+1] + self.D @ u\n        return t, x, y\n",
+    "docstring": "Linear state-space system representation with simulation and discretization methods.",
+    "signature": "(self, A, B, C=None, D=None, dt=None)",
+    "category": "utils"
+  },
+  {
+    "function_name": "run_simulation",
+    "code": "def run_simulation(controller, plant, x0, t_span, dt):\n    \"\"\"\n    Run closed-loop simulation of a controller and plant.\n\n    Args:\n        controller: Object with update(measurement) method returning control.\n        plant: State-space system or function that takes (x, u, dt) and returns next x.\n        x0: Initial state.\n        t_span: (t_start, t_end).\n        dt: Time step.\n\n    Returns:\n        t: Time array\n        x_history: State history\n        u_history: Control history\n    \"\"\"\n    import numpy as np\n    n_steps = int((t_span[1] - t_span[0]) / dt)\n    t = np.linspace(t_span[0], t_span[1], n_steps+1)\n    x = np.zeros((n_steps+1, len(x0)))\n    u = np.zeros((n_steps, plant.nu if hasattr(plant, 'nu') else 1))\n    x[0] = x0\n    for i in range(n_steps):\n        # Get measurement (assuming full state)\n        measurement = x[i]\n        # Compute control\n        u_i = controller.update(measurement) if hasattr(controller, 'update') else controller(measurement)\n        u[i] = u_i\n        # Update plant\n        if hasattr(plant, 'simulate_step'):\n            x[i+1] = plant.simulate_step(x[i], u_i, dt)\n        else:\n            # Assume linear system\n            x[i+1] = plant.A @ x[i] + plant.B @ u_i\n    return t, x, u\n",
+    "docstring": "Run closed-loop simulation of a controller and plant.",
+    "signature": "(controller, plant, x0, t_span, dt)",
+    "category": "utils"
+  },
+  {
+    "function_name": "ise",
+    "code": "def ise(error, dt=1.0):\n    \"\"\"\n    Integral Square Error performance metric.\n\n    Args:\n        error: Array of error values.\n        dt: Time step.\n\n    Returns:\n        ISE value.\n    \"\"\"\n    import numpy as np\n    return np.sum(error**2) * dt\n",
+    "docstring": "Compute Integral Square Error (ISE) performance metric.",
+    "signature": "(error, dt=1.0)",
+    "category": "utils"
+  },
+  {
+    "function_name": "iae",
+    "code": "def iae(error, dt=1.0):\n    \"\"\"\n    Integral Absolute Error performance metric.\n\n    Args:\n        error: Array of error values.\n        dt: Time step.\n\n    Returns:\n        IAE value.\n    \"\"\"\n    import numpy as np\n    return np.sum(np.abs(error)) * dt\n",
+    "docstring": "Compute Integral Absolute Error (IAE) performance metric.",
+    "signature": "(error, dt=1.0)",
+    "category": "utils"
+  },
+  {
+    "function_name": "itae",
+    "code": "def itae(t, error, dt=1.0):\n    \"\"\"\n    Integral Time-weighted Absolute Error performance metric.\n\n    Args:\n        t: Time array.\n        error: Error array.\n        dt: Time step.\n\n    Returns:\n        ITAE value.\n    \"\"\"\n    import numpy as np\n    return np.sum(t * np.abs(error)) * dt\n",
+    "docstring": "Compute Integral Time-weighted Absolute Error (ITAE) performance metric.",
+    "signature": "(t, error, dt=1.0)",
+    "category": "utils"
+  },
+  {
+    "function_name": "IntegralClampPID",
+    "code": "class IntegralClampPID:\n    \"\"\"\n    PID controller with integral clamping anti-windup.\n\n    When output saturates, integral accumulation stops.\n    \"\"\"\n    def __init__(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0,\n                 output_limits=(-float('inf'), float('inf')), sample_time=0.01):\n        self.Kp = Kp\n        self.Ki = Ki\n        self.Kd = Kd\n        self.setpoint = setpoint\n        self.output_min, self.output_max = output_limits\n        self.sample_time = sample_time\n        self._integral = 0.0\n        self._last_error = 0.0\n        self._last_time = None\n\n    def reset(self):\n        self._integral = 0.0\n        self._last_error = 0.0\n        self._last_time = None\n\n    def update(self, measurement):\n        import time\n        now = time.monotonic() if hasattr(time, 'monotonic') else time.time()\n        if self._last_time is None:\n            dt = self.sample_time\n        else:\n            dt = min(now - self._last_time, self.sample_time * 10)\n        if dt <= 0:\n            dt = self.sample_time\n\n        error = self.setpoint - measurement\n        proportional = self.Kp * error\n        derivative = self.Kd * (error - self._last_error) / dt if dt > 0 else 0.0\n\n        # Compute output without integral\n        output_unsat = proportional + derivative\n        # Clamp output before adding integral\n        output_unsat_clamped = max(self.output_min, min(output_unsat, self.output_max))\n        # Integral only accumulates when output not saturated\n        if self.Ki != 0 and output_unsat_clamped == output_unsat:\n            self._integral += self.Ki * error * dt\n            self._integral = max(self.output_min, min(self._integral, self.output_max))\n        output = output_unsat_clamped + self._integral\n        output = max(self.output_min, min(output, self.output_max))\n\n        self._last_error = error\n        self._last_time = now\n        return output\n",
+    "docstring": "PID controller with integral clamping anti-windup: integral stops when output saturates.",
+    "signature": "(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0, output_limits=(-float('inf'), float('inf')), sample_time=0.01)",
+    "category": "control"
+  },
+  {
+    "function_name": "DerivativeKickFreePID",
+    "code": "class DerivativeKickFreePID:\n    \"\"\"\n    PID controller with derivative on measurement (avoids derivative kick).\n    \"\"\"\n    def __init__(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0,\n                 output_limits=(None, None), sample_time=0.01):\n        self.Kp = Kp\n        self.Ki = Ki\n        self.Kd = Kd\n        self.setpoint = setpoint\n        self.output_limits = output_limits\n        self.sample_time = sample_time\n        self._integral = 0.0\n        self._last_measurement = None\n        self._last_time = None\n\n    def reset(self):\n        self._integral = 0.0\n        self._last_measurement = None\n        self._last_time = None\n\n    def update(self, measurement):\n        import time\n        now = time.monotonic() if hasattr(time, 'monotonic') else time.time()\n        if self._last_time is None:\n            dt = self.sample_time\n        else:\n            dt = min(now - self._last_time, self.sample_time * 10)\n        if dt <= 0:\n            dt = self.sample_time\n\n        error = self.setpoint - measurement\n        proportional = self.Kp * error\n        self._integral += self.Ki * error * dt\n        derivative = 0.0\n        if self._last_measurement is not None and dt > 0:\n            derivative = self.Kd * (self._last_measurement - measurement) / dt\n        output = proportional + self._integral + derivative\n        if self.output_limits[0] is not None:\n            output = max(self.output_limits[0], output)\n        if self.output_limits[1] is not None:\n            output = min(self.output_limits[1], output)\n        self._last_measurement = measurement\n        self._last_time = now\n        return output\n",
+    "docstring": "PID controller with derivative on measurement to avoid derivative kick on setpoint changes.",
+    "signature": "(self, Kp=1.0, Ki=0.0, Kd=0.0, setpoint=0.0, output_limits=(None, None), sample_time=0.01)",
+    "category": "control"
+  },
+  {
+    "function_name": "lqr_tracking",
+    "code": "import numpy as np\nfrom scipy.linalg import solve_continuous_are\n\ndef lqr_tracking(A, B, Q, R, N=None):\n    \"\"\"\n    LQR with integral action for reference tracking.\n\n    Extends state with integral of error to eliminate steady-state error.\n    Augmented system: [x; e_int] with e_int_dot = r - y = r - C x.\n\n    Returns gain K_aug for augmented state, and feedforward gain for reference.\n    \"\"\"\n    n = A.shape[0]\n    m = B.shape[1]\n    # Assume output C = I (full state feedback) for simplicity\n    C = np.eye(n)\n    # Augmented system\n    A_aug = np.block([[A, np.zeros((n, n))], [-C, np.zeros((n, n))]])\n    B_aug = np.vstack([B, np.zeros((n, m))])\n    # Cost matrices for augmented state\n    Q_aug = np.block([[Q, np.zeros((n, n))], [np.zeros((n, n)), np.eye(n)]])\n    R_aug = R\n    K_aug, S, E = lqr(A_aug, B_aug, Q_aug, R_aug, N)\n    K_x = K_aug[:, :n]\n    K_i = K_aug[:, n:]\n    return K_x, K_i, E\n",
+    "docstring": "LQR design with integral action for reference tracking, eliminating steady-state error.",
+    "signature": "(A, B, Q, R, N=None)",
+    "category": "lqr"
+  },
+  {
+    "function_name": "mpc_with_constraints",
+    "code": "import numpy as np\nfrom scipy.optimize import minimize\n\nclass MPCWithConstraints:\n    \"\"\"\n    MPC for linear systems with input and state constraints using SLSQP.\n    \"\"\"\n    def __init__(self, A, B, Q, R, horizon=10, umin=None, umax=None, xmin=None, xmax=None):\n        self.A = np.array(A)\n        self.B = np.array(B)\n        self.Q = np.array(Q)\n        self.R = np.array(R)\n        self.N = horizon\n        self.nx = A.shape[0]\n        self.nu = B.shape[1]\n        self.umin = umin if umin is not None else -np.inf\n        self.umax = umax if umax is not None else np.inf\n        self.xmin = xmin if xmin is not None else -np.inf * np.ones(self.nx)\n        self.xmax = xmax if xmax is not None else np.inf * np.ones(self.nx)\n\n    def predict(self, x0, u_seq):\n        x = x0.copy()\n        traj = [x]\n        for k in range(self.N):\n            x = self.A @ x + self.B @ u_seq[k]\n            traj.append(x)\n        return np.array(traj)\n\n    def cost(self, u_flat, x0, ref):\n        u_seq = u_flat.reshape(self.N, self.nu)\n        x_traj = self.predict(x0, u_seq)\n        cost = 0.0\n        for k in range(self.N):\n            dx = x_traj[k] - ref\n            cost += dx.T @ self.Q @ dx + u_seq[k].T @ self.R @ u_seq[k]\n        dx = x_traj[-1] - ref\n        cost += dx.T @ self.Q @ dx\n        return cost\n\n    def constraints(self, u_flat, x0, ref):\n        u_seq = u_flat.reshape(self.N, self.nu)\n        x_traj = self.predict(x0, u_seq)\n        cons = []\n        # Input constraints\n        for k in range(self.N):\n            for i in range(self.nu):\n                cons.append({'type': 'ineq', 'fun': lambda u, i=i, k=k: self.umax[i] - u_seq[k][i]})\n                cons.append({'type': 'ineq', 'fun': lambda u, i=i, k=k: u_seq[k][i] - self.umin[i]})\n        # State constraints\n        for k in range(self.N+1):\n            for i in range(self.nx):\n                cons.append({'type': 'ineq', 'fun': lambda x, i=i, k=k: self.xmax[i] - x_traj[k][i]})\n                cons.append({'type': 'ineq', 'fun': lambda x, i=i, k=k: x_traj[k][i] - self.xmin[i]})\n        return cons\n\n    def solve(self, x0, ref):\n        u0 = np.zeros(self.N * self.nu)\n        bounds = [(self.umin, self.umax)] * (self.N * self.nu)\n        cons = self.constraints(u0, x0, ref)\n        result = minimize(self.cost, u0, args=(x0, ref), method='SLSQP', bounds=bounds, constraints=cons)\n        if result.success:\n            return result.x.reshape(self.N, self.nu)[0]\n        else:\n            return np.zeros(self.nu)\n",
+    "docstring": "Model Predictive Control with input and state constraints using SLSQP.",
+    "signature": "(self, A, B, Q, R, horizon=10, umin=None, umax=None, xmin=None, xmax=None)",
+    "category": "mpc"
+  },
+  {
+    "function_name": "tf2ss",
+    "code": "def tf2ss(num, den):\n    \"\"\"\n    Convert transfer function to state-space representation (controllable canonical form).\n\n    Args:\n        num: Numerator coefficients [b0, b1, ..., bm]\n        den: Denominator coefficients [a0, a1, ..., an] with a0 = 1\n\n    Returns:\n        A, B, C, D matrices.\n    \"\"\"\n    import numpy as np\n    num = np.array(num, dtype=float)\n    den = np.array(den, dtype=float)\n    n = len(den) - 1\n    m = len(num) - 1\n    # Pad numerator with zeros if needed\n    if m < n:\n        num = np.pad(num, (n - m, 0), 'constant')\n    A = np.zeros((n, n))\n    for i in range(n-1):\n        A[i, i+1] = 1.0\n    A[-1, :] = -den[1:]\n    B = np.zeros((n, 1))\n    B[-1, 0] = 1.0\n    C = num[1:] - num[0] * den[1:]\n    D = num[0]\n    return A, B, C.reshape(1, -1), np.array([[D]])\n",
+    "docstring": "Convert transfer function (numerator, denominator) to state-space controllable canonical form.",
+    "signature": "(num, den)",
+    "category": "utils"
+  },
+  {
+    "function_name": "series_connection",
+    "code": "def series_connection(sys1, sys2):\n    \"\"\"\n    Connect two state-space systems in series: sys2 after sys1.\n\n    Returns system with state = [x1; x2] and output = y2.\n    \"\"\"\n    import numpy as np\n    A1, B1, C1, D1 = sys1.A, sys1.B, sys1.C, sys1.D\n    A2, B2, C2, D2 = sys2.A, sys2.B, sys2.C, sys2.D\n    n1 = A1.shape[0]\n    n2 = A2.shape[0]\n    A = np.block([[A1, np.zeros((n1, n2))], [B2 @ C1, A2]])\n    B = np.vstack([B1, B2 @ D1])\n    C = np.hstack([D2 @ C1, C2])\n    D = D2 @ D1\n    return StateSpace(A, B, C, D)\n",
+    "docstring": "Connect two state-space systems in series (sys2 after sys1).",
+    "signature": "(sys1, sys2)",
+    "category": "utils"
+  },
+  {
+    "function_name": "add_noise",
+    "code": "def add_noise(signal, noise_std, seed=None):\n    \"\"\"\n    Add Gaussian white noise to a signal.\n\n    Args:\n        signal: Input signal array.\n        noise_std: Standard deviation of noise.\n        seed: Random seed for reproducibility.\n\n    Returns:\n        Noisy signal.\n    \"\"\"\n    import numpy as np\n    if seed is not None:\n        np.random.seed(seed)\n    noise = np.random.normal(0, noise_std, size=len(signal))\n    return signal + noise\n",
+    "docstring": "Add Gaussian white noise to a signal for realistic simulation.",
+    "signature": "(signal, noise_std, seed=None)",
+    "category": "utils"
+  },
+  {
+    "function_name": "plot_response",
+    "code": "def plot_response(t, y, u=None, setpoint=None, title='System Response'):\n    \"\"\"\n    Plot system output and control input over time.\n\n    Args:\n        t: Time array.\n        y: Output array.\n        u: Control input array (optional).\n        setpoint: Setpoint value (optional).\n        title: Plot title.\n    \"\"\"\n    import matplotlib.pyplot as plt\n    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)\n    ax1.plot(t, y, 'b-', label='Output')\n    if setpoint is not None:\n        ax1.axhline(y=setpoint, color='r', linestyle='--', label='Setpoint')\n    ax1.set_ylabel('Output')\n    ax1.legend()\n    ax1.grid(True)\n    if u is not None:\n        ax2.plot(t[:-1] if len(u) == len(t)-1 else t, u, 'g-', label='Control')\n        ax2.set_ylabel('Control')\n        ax2.legend()\n        ax2.grid(True)\n    ax2.set_xlabel('Time (s)')\n    plt.suptitle(title)\n    plt.tight_layout()\n    plt.show()\n",
+    "docstring": "Plot system output and control input response over time.",
+    "signature": "(t, y, u=None, setpoint=None, title='System Response')",
+    "category": "utils"
+  },
+  {
+    "function_name": "PI_controller",
+    "code": "class PIController:\n    \"\"\"Simplified PI controller (P + I only).\"\"\"\n    def __init__(self, Kp=1.0, Ki=0.0, setpoint=0.0, output_limits=(None, None), sample_time=0.01):\n        self.Kp = Kp\n        self.Ki = Ki\n        self.setpoint = setpoint\n        self.output_limits = output_limits\n        self.sample_time = sample_time\n        self._integral = 0.0\n        self._last_time = None\n\n    def reset(self):\n        self._integral = 0.0\n        self._last_time = None\n\n    def update(self, measurement):\n        import time\n        now = time.monotonic() if hasattr(time, 'monotonic') else time.time()\n        if self._last_time is None:\n            dt = self.sample_time\n        else:\n            dt = min(now - self._last_time, self.sample_time * 10)\n        if dt <= 0:\n            dt = self.sample_time\n        error = self.setpoint - measurement\n        self._integral += self.Ki * error * dt\n        output = self.Kp * error + self._integral\n        if self.output_limits[0] is not None:\n            output = max(self.output_limits[0], output)\n        if self.output_limits[1] is not None:\n            output = min(self.output_limits[1], output)\n        self._last_time = now\n        return output\n",
+    "docstring": "Simplified PI controller (no derivative term) with anti-windup.",
+    "signature": "(self, Kp=1.0, Ki=0.0, setpoint=0.0, output_limits=(None, None), sample_time=0.01)",
+    "category": "control"
+  }
+]
