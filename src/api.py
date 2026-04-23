@@ -63,6 +63,23 @@ _path_data_cache: dict = {}
 # 无人机相关类别标签集合
 _DRONE_CATEGORIES = {"mission", "control", "tuning", "planning"}
 
+# 用于指令文本关键词检测的无人机相关词列表（小写，模糊匹配，用于检索降级时仍能触发可视化）
+_DRONE_KEYWORDS = [
+    "无人机", "飞行", "路径规划", "避障", "躲避障碍", "起飞", "降落", "悬停",
+    "飞控", "航线", "巡视", "巡检", "导航", "drone", "uav", "waypoint",
+    "obstacle", "avoidance", "autopilot",
+]
+
+
+def _is_drone_instruction(instruction: str) -> bool:
+    """基于关键词判断指令是否与无人机相关，用于检索降级时仍能触发可视化。
+
+    采用大小写不敏感的子串匹配（启发式兜底），可能存在误报，
+    建议仅在 retrieved_item 为空时作为降级检测手段使用。
+    """
+    text = instruction.lower()
+    return any(kw in text for kw in _DRONE_KEYWORDS)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("预热检索模型...")
@@ -94,10 +111,10 @@ async def generate(req: GenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # 判断是否为无人机相关代码（根据检索条目的 category 字段）
+    # 判断是否为无人机相关代码：优先看检索条目 category，降级时用指令关键词兜底
     retrieved_item = result.get("retrieved_item")
     category = (retrieved_item.get("category", "") if retrieved_item else "").lower()
-    is_drone_related = category in _DRONE_CATEGORIES
+    is_drone_related = (category in _DRONE_CATEGORIES) or _is_drone_instruction(req.instruction)
 
     visualization_url = None
     mission_id = None
