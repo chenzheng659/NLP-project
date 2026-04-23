@@ -14,9 +14,11 @@ class DroneVisualizer:
     """无人机路径3D可视化器"""
     
     def __init__(self):
-        self.templates = Jinja2Templates(
-            directory=str(_DRONE_DIR / "templates")
-        )
+        templates_dir = _DRONE_DIR / "templates"
+        print(f"模板目录: {templates_dir.absolute()}")
+        if not templates_dir.exists():
+            raise FileNotFoundError(f"模板目录不存在: {templates_dir}")
+        self.templates = Jinja2Templates(directory=str(templates_dir))
         self.static_dir = _DRONE_DIR / "static"
         
     def generate_path_data(self, instruction: str, generated_code: str) -> Dict:

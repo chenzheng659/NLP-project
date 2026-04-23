@@ -5,6 +5,8 @@ api.py - FastAPI 入口
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 "1"
+import traceback
+from fastapi.responses import Response
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -122,6 +124,7 @@ async def get_visualizer_page(request: Request, mission_id: Optional[str] = None
         
         return drone_visualizer.render_visualization_page(path_data, request)
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"可视化页面生成失败: {str(e)}")
 
 @app.post("/api/generate_and_visualize")
@@ -152,6 +155,11 @@ async def generate_and_visualize(request: GenerateRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"生成与可视化失败: {str(e)}")
+
+@app.head("/visualizer")
+async def head_visualizer():
+    # 仅返回响应头，不返回HTML内容
+    return Response(status_code=200)
 
 @app.get("/api/visualization_data")
 async def get_visualization_data(mission_id: str):
