@@ -89,22 +89,25 @@ def process(source_code, instruction, use_mock):
 
 def check_drone_status():
     """检查后端无人机可视化模块是否可用"""
+    import html as _html
+    safe_url = _html.escape(VISUALIZER_URL)
     try:
         resp = requests.get(f"{BACKEND_BASE}/health", timeout=3)
-        if resp.status_code == 200:
-            # 尝试访问 visualizer 端点（只检查 HEAD 或 GET）
-            viz_resp = requests.get(VISUALIZER_URL, timeout=5)
-            if viz_resp.status_code == 200:
-                return f"✅ 无人机可视化模块在线 → <a href='{VISUALIZER_URL}' target='_blank'>{VISUALIZER_URL}</a>"
-            elif viz_resp.status_code == 503:
-                return "⚠️ 后端在线，但无人机可视化模块加载失败（查看后端终端日志获取详情）"
-            else:
-                return f"⚠️ 后端返回异常状态码 {viz_resp.status_code}"
-        return "❌ 后端服务未响应"
+        if resp.status_code != 200:
+            return "❌ 后端服务未响应"
+        # 用 HEAD 请求检测 visualizer 端点，减少传输开销
+        viz_resp = requests.head(VISUALIZER_URL, timeout=5)
+        if viz_resp.status_code == 200:
+            return f"✅ 无人机可视化模块在线 → <a href='{safe_url}' target='_blank'>{safe_url}</a>"
+        elif viz_resp.status_code == 503:
+            return "⚠️ 后端在线，但无人机可视化模块加载失败（查看后端终端日志获取详情）"
+        else:
+            return f"⚠️ 后端返回异常状态码 {viz_resp.status_code}"
     except Exception as e:
         return f"❌ 无法连接后端：{e}"
 
 
+def clear_all():
     return "", "", "", "", "", ""
 
 
