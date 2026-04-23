@@ -1,4 +1,5 @@
 import json
+import os
 import torch
 import faiss
 import numpy as np
@@ -66,12 +67,13 @@ class CodeRetriever:
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     items = json.load(f)
-                # 为没有 category 字段的条目推断分类标签（取文件名去扩展名）
-                import os
-                inferred_category = os.path.splitext(os.path.basename(path))[0]
+                # 为没有 category 字段的条目推断分类标签（取文件名去扩展名并规范化）
+                raw_name = os.path.splitext(os.path.basename(path))[0]
+                # 规范化文件名拼写错误（如 misssion → mission）
+                inferred_category = raw_name.rstrip("s") + "ion" if raw_name.endswith("ssion") else raw_name
                 for item in items:
                     if 'category' not in item:
-                        item = dict(item, category=inferred_category)
+                        item = {**item, 'category': inferred_category}
                     merged.append(item)
                 print(f"已加载数据集: {path}，共 {len(items)} 条记录")
             except Exception as e:

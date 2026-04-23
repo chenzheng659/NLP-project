@@ -61,7 +61,7 @@ class GenerateResponse(BaseModel):
 _path_data_cache: dict = {}
 
 # 无人机相关类别标签集合
-_DRONE_CATEGORIES = {"mission", "control", "tuning", "planning", "misssion"}
+_DRONE_CATEGORIES = {"mission", "control", "tuning", "planning"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
