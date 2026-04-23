@@ -44,14 +44,24 @@ class GenerateRequest(BaseModel):
     source_code: Optional[str] = Field(None)
 
 class GenerateResponse(BaseModel):
-    mode:           str            
-    retrieved_code: Optional[str]  
-    before_code:    str            
-    after_code:     str            
-    diff:           str            
-    changed:        bool           
-    patch_note:     str            
-    merge_method:   str            
+    mode:               str
+    retrieved_code:     Optional[str]
+    before_code:        str
+    after_code:         str
+    diff:               str
+    changed:            bool
+    patch_note:         str
+    merge_method:       str
+    # 无人机可视化相关（仅当检索到无人机类别代码时填充）
+    is_drone_related:   bool = False
+    visualization_url:  Optional[str] = None
+    mission_id:         Optional[str] = None
+
+# 内存缓存：存储每次请求生成的路径数据，key = mission_id
+_path_data_cache: dict = {}
+
+# 无人机相关类别标签集合
+_DRONE_CATEGORIES = {"mission", "control", "tuning", "planning"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,6 +94,31 @@ async def generate(req: GenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # 判断是否为无人机相关代码（根据检索条目的 category 字段）
+    retrieved_item = result.get("retrieved_item")
+    category = (retrieved_item.get("category", "") if retrieved_item else "").lower()
+    is_drone_related = category in _DRONE_CATEGORIES
+
+    visualization_url = None
+    mission_id = None
+
+    if is_drone_related and _drone_available and drone_visualizer:
+        import hashlib
+        mission_id = hashlib.md5(
+            f"{req.instruction}{result.get('after_code', '')}".encode()
+        ).hexdigest()[:12]
+
+        path_data = drone_visualizer.generate_path_data(
+            instruction=req.instruction,
+            generated_code=result.get("after_code", ""),
+            retrieved_item=retrieved_item,
+        )
+        path_data["mission_name"] = path_data.get("mission_name") or req.instruction[:50]
+        path_data["waypoints"] = path_processor.generate_waypoints(path_data["path"], 80)
+        _path_data_cache[mission_id] = path_data
+
+        visualization_url = f"/visualizer?mission_id={mission_id}"
+
     return GenerateResponse(
         mode=result["mode"],
         retrieved_code=result["retrieved_code"],
@@ -93,6 +128,9 @@ async def generate(req: GenerateRequest):
         changed=result["changed"],
         patch_note=result["patch_note"],
         merge_method=result["merge_method"],
+        is_drone_related=is_drone_related,
+        visualization_url=visualization_url,
+        mission_id=mission_id,
     )
 
 @app.get("/health")
@@ -105,23 +143,26 @@ async def get_visualizer_page(request: Request, mission_id: Optional[str] = None
     if not _drone_available:
         raise HTTPException(status_code=503, detail="无人机可视化模块不可用")
     try:
-        # 从session或数据库获取路径数据，这里使用示例数据
-        sample_path = [
-            {"x": 0, "y": 0, "z": 10, "yaw": 0, "action": "takeoff"},
-            {"x": 20, "y": 5, "z": 15, "yaw": 45, "action": "move"},
-            {"x": 40, "y": -10, "z": 20, "yaw": 90, "action": "inspect"},
-            {"x": 60, "y": 0, "z": 10, "yaw": 180, "action": "move"},
-            {"x": 60, "y": 0, "z": 0, "yaw": 180, "action": "land"},
-        ]
-        
-        path_data = {
-            "mission_name": "无人机自主巡查任务" if not mission_id else f"任务-{mission_id}",
-            "path": sample_path,
-            "total_distance": path_processor.calculate_path_length(sample_path),
-            "estimated_time": 45,
-            "waypoints": path_processor.generate_waypoints(sample_path, 50)
-        }
-        
+        # 优先使用缓存的路径数据（来自 /generate 接口的结果）
+        if mission_id and mission_id in _path_data_cache:
+            path_data = _path_data_cache[mission_id]
+        else:
+            # 回退到示例数据
+            sample_path = [
+                {"x": 0,  "y": 0,   "z": 10, "yaw": 0,   "action": "takeoff"},
+                {"x": 20, "y": 5,   "z": 15, "yaw": 45,  "action": "move"},
+                {"x": 40, "y": -10, "z": 20, "yaw": 90,  "action": "inspect"},
+                {"x": 60, "y": 0,   "z": 10, "yaw": 180, "action": "move"},
+                {"x": 60, "y": 0,   "z": 0,  "yaw": 180, "action": "land"},
+            ]
+            path_data = {
+                "mission_name": "无人机自主巡查任务" if not mission_id else f"任务-{mission_id}",
+                "path": sample_path,
+                "total_distance": path_processor.calculate_path_length(sample_path),
+                "estimated_time": 45,
+                "waypoints": path_processor.generate_waypoints(sample_path, 50),
+            }
+
         return drone_visualizer.render_visualization_page(path_data, request)
     except Exception as e:
         traceback.print_exc()
@@ -135,13 +176,15 @@ async def generate_and_visualize(request: GenerateRequest):
     try:
         # 1. 调用原有的工作流生成代码
         result = await run_workflow(request.instruction, request.source_code)
-        
-        # 2. 生成可视化数据
+
+        # 2. 生成可视化数据（利用检索条目元数据）
+        retrieved_item = result.get("retrieved_item")
         path_data = drone_visualizer.generate_path_data(
-            request.instruction, 
-            result.get("final_code", "")
+            request.instruction,
+            result.get("after_code", ""),
+            retrieved_item=retrieved_item,
         )
-        
+
         # 3. 合并结果
         return {
             "status": "success",

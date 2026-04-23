@@ -48,16 +48,19 @@ async def run_workflow(instruction: str, source_code: Optional[str]) -> dict:
     has_source_code = mode == "direct_edit"
 
     # ── Step 1: 确定基础草稿 ──────────────────────────
+    retrieved_item = None
     if mode == "retrieval_generation":
         print(f"[模式一] 检索生成 | 指令: {instruction[:60]}...")
-        retrieved_code = search_code(instruction)
+        retrieved_item = search_code(instruction)
 
-        if retrieved_code:
+        if retrieved_item:
             print(f"  → 检索命中，使用检索代码作为草稿")
+            retrieved_code = retrieved_item.get("code", "")
             base_code = retrieved_code
         else:
             # 降级：无匹配，让 LLM 从头生成，base_code 置空
             print(f"  → 未检索到匹配，降级为纯生成")
+            retrieved_code = None
             base_code = ""
     else:
         print(f"[模式二] 直接编辑 | 指令: {instruction[:60]}...")
@@ -84,6 +87,7 @@ async def run_workflow(instruction: str, source_code: Optional[str]) -> dict:
     return {
         "mode":           mode,
         "retrieved_code": retrieved_code,
+        "retrieved_item": retrieved_item,   # 完整检索条目（含 category 等元数据）
         "before_code":    parsed.original_code,
         "after_code":     merge_result.final_code,
         "final_code":     merge_result.final_code,

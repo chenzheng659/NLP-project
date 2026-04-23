@@ -22,7 +22,7 @@ def get_retriever() -> CodeRetriever:
     if _retriever_instance is None:
         print("正在初始化 CodeRetriever（首次运行会下载模型）...")
         _retriever_instance = CodeRetriever(
-            dataset_path=config.DATASET_PATH,
+            dataset_paths=config.DATASET_PATHS,
             embed_model_name=config.EMBED_MODEL_NAME,
             rerank_model_name=config.RERANK_MODEL_NAME,
         )
@@ -30,12 +30,12 @@ def get_retriever() -> CodeRetriever:
     return _retriever_instance
 
 
-def search_code(instruction: str) -> Optional[str]:
+def search_code(instruction: str) -> Optional[dict]:
     """
     根据自然语言指令检索最匹配的代码片段。
 
     Returns:
-        匹配到的代码字符串；若无匹配则返回 None（触发降级纯生成）
+        匹配到的条目字典（含 code、category 等字段）；若无匹配则返回 None（触发降级纯生成）
     """
     retriever = get_retriever()
     results = retriever.search(
@@ -45,5 +45,5 @@ def search_code(instruction: str) -> Optional[str]:
         rerank_threshold=config.RERANK_THRESHOLD,
     )
     if results:
-        return results[0].get("code", "")
+        return results[0]
     return None

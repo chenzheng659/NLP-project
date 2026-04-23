@@ -34,10 +34,11 @@ def mock_generate(source_code, instruction):
 # ── 核心处理函数 ─────────────────────────────────────────────────────
 def process(source_code, instruction, use_mock):
     if not instruction.strip():
-        return "", "", "", "请填写「需求 / 指令」后再提交。"
+        return "", "", "", "请填写「需求 / 指令」后再提交。", ""
 
     if use_mock:
-        return mock_generate(source_code, instruction)
+        draft, patch, result, log = mock_generate(source_code, instruction)
+        return draft, patch, result, log, ""
 
     # 调用真实后端
     try:
@@ -77,13 +78,39 @@ def process(source_code, instruction, use_mock):
             f"──────────────────────────────"
         )
 
-        return base_draft, patch_code, final_code, log
+        # 无人机可视化 iframe（当后端检测到无人机相关代码时）
+        viz_html = ""
+        if data.get("is_drone_related") and data.get("visualization_url"):
+            viz_url = f"{BACKEND_BASE}{data['visualization_url']}"
+            import html as _html
+            safe_url = _html.escape(viz_url)
+            viz_html = f"""
+<div style="margin-top:16px;background:linear-gradient(135deg,#0d1b2a,#0f2027);
+            border:1px solid #1e3a5f;border-radius:14px;padding:16px 20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:1.3rem;">🚁</span>
+        <span style="color:#4cc9f0;font-size:0.95rem;font-weight:700;letter-spacing:1px;">
+            已生成无人机路径 3D 可视化
+        </span>
+        <a href="{safe_url}" target="_blank"
+           style="margin-left:auto;padding:6px 14px;background:linear-gradient(135deg,#1d4ed8,#0891b2);
+                  color:#fff;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;">
+            🔗 新标签页打开
+        </a>
+    </div>
+    <iframe src="{safe_url}" width="100%" height="480"
+            style="border:none;border-radius:10px;background:#1a1a2e;"
+            allowfullscreen></iframe>
+</div>"""
+
+        return base_draft, patch_code, final_code, log, viz_html
     except Exception as e:
         return (
             "",
             "",
             "",
             f" 后端请求失败：{e}\n\n 提示：可勾选「使用 Mock 模式」在本地测试前端。",
+            "",
         )
 
 
@@ -108,7 +135,7 @@ def check_drone_status():
 
 
 def clear_all():
-    return "", "", "", "", "", ""
+    return "", "", "", "", "", "", ""
 
 
 # ── 自定义 CSS ────────────────────────────────────────────────────────
@@ -352,11 +379,14 @@ with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as de
                 elem_id="log-box",
             )
 
+            # 无人机可视化 iframe（检测到无人机相关代码时自动显示）
+            drone_viz = gr.HTML(value="", label="")
+
     # ── 事件绑定 ─────────────────────────────────────────────────────
     btn_run.click(
         fn=process,
         inputs=[source_code, instruction, use_mock],
-        outputs=[base_draft, patch_code, final_code, log_output],
+        outputs=[base_draft, patch_code, final_code, log_output, drone_viz],
     )
 
     btn_clear.click(
@@ -369,6 +399,7 @@ with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as de
             patch_code,
             final_code,
             log_output,
+            drone_viz,
         ],
     )
 
@@ -384,7 +415,8 @@ with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as de
                 </div>
                 <p style="color:#7aadcc;font-size:0.82rem;margin:0 0 14px;">
                     生成完代码后，可在后端提供的 Three.js 场景中查看无人机飞行路径动画。
-                    点击下方按钮可在新标签页打开可视化页面，或先检测模块是否在线。
+                    当检索到无人机相关代码（任务规划 / 控制器 / 路径规划）时，可视化将自动嵌入上方区域。
+                    也可点击下方按钮在新标签页打开，或先检测模块是否在线。
                 </p>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     <a href="http://127.0.0.1:8000/visualizer" target="_blank"

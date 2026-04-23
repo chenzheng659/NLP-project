@@ -9,6 +9,14 @@ from pathlib import Path
 # ── 路径 ──────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent / "data"
 DATASET_PATH = str(BASE_DIR / "code.json")
+
+# 所有参与检索的数据集文件（含无人机专项数据集）
+DATASET_PATHS = [
+    str(BASE_DIR / "code.json"),
+    str(BASE_DIR / "misssion.json"),
+    str(BASE_DIR / "control.json"),
+    str(BASE_DIR / "planning.json"),
+]
 PROMPT_TEMPLATE_PATH = str(BASE_DIR / "prompt_templates.txt")
 
 # ── LLM API ───────────────────────────────────────
