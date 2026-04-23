@@ -57,8 +57,9 @@ class DroneVisualizer:
         }
         
         return self.templates.TemplateResponse(
-            "visualizer.html", 
-            {"request": request, "data": template_data}
+            request=request,
+            name="visualizer.html",
+            context={"data": template_data}
         )
     
     def get_static_path(self, filename: str) -> str:
