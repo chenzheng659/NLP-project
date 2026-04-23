@@ -4,6 +4,8 @@ import json
 
 # ── 后端 API 地址（开发阶段可先用 Mock）──────────────────────────────
 BACKEND_URL = "http://127.0.0.1:8000/generate"
+BACKEND_BASE = "http://127.0.0.1:8000"
+VISUALIZER_URL = f"{BACKEND_BASE}/visualizer"
 
 
 # ── Mock 函数（后端未就绪时使用）────────────────────────────────────
@@ -85,7 +87,24 @@ def process(source_code, instruction, use_mock):
         )
 
 
-def clear_all():
+def check_drone_status():
+    """检查后端无人机可视化模块是否可用"""
+    try:
+        resp = requests.get(f"{BACKEND_BASE}/health", timeout=3)
+        if resp.status_code == 200:
+            # 尝试访问 visualizer 端点（只检查 HEAD 或 GET）
+            viz_resp = requests.get(VISUALIZER_URL, timeout=5)
+            if viz_resp.status_code == 200:
+                return f"✅ 无人机可视化模块在线 → <a href='{VISUALIZER_URL}' target='_blank'>{VISUALIZER_URL}</a>"
+            elif viz_resp.status_code == 503:
+                return "⚠️ 后端在线，但无人机可视化模块加载失败（查看后端终端日志获取详情）"
+            else:
+                return f"⚠️ 后端返回异常状态码 {viz_resp.status_code}"
+        return "❌ 后端服务未响应"
+    except Exception as e:
+        return f"❌ 无法连接后端：{e}"
+
+
     return "", "", "", "", "", ""
 
 
@@ -350,7 +369,41 @@ with gr.Blocks(css=CSS, title="EfficientEdit · 混合代码生成框架") as de
         ],
     )
 
-    # ── 底部说明 ─────────────────────────────────────────────────────
+    # ── 无人机可视化入口 ───────────────────────────────────────────────
+    with gr.Row():
+        with gr.Column():
+            gr.HTML("""
+            <div style="margin-top:20px;background:linear-gradient(135deg,#0d1b2a,#0f2027);
+                        border:1px solid #1e3a5f;border-radius:14px;padding:20px 24px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <span style="font-size:1.5rem;">🚁</span>
+                    <span style="color:#4cc9f0;font-size:1rem;font-weight:700;letter-spacing:1px;">无人机路径 3D 可视化</span>
+                </div>
+                <p style="color:#7aadcc;font-size:0.82rem;margin:0 0 14px;">
+                    生成完代码后，可在后端提供的 Three.js 场景中查看无人机飞行路径动画。
+                    点击下方按钮可在新标签页打开可视化页面，或先检测模块是否在线。
+                </p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <a href="http://127.0.0.1:8000/visualizer" target="_blank"
+                       style="display:inline-block;padding:9px 20px;background:linear-gradient(135deg,#1d4ed8,#0891b2);
+                              color:#fff;border-radius:8px;font-size:0.85rem;font-weight:600;text-decoration:none;">
+                        🚀 打开 3D 可视化
+                    </a>
+                </div>
+            </div>
+            """)
+
+    with gr.Row():
+        with gr.Column():
+            drone_status = gr.HTML(
+                value="<span style='color:#4a8fa8;font-size:0.8rem;'>点击「检测」查看无人机可视化模块状态</span>",
+                label="",
+            )
+            btn_drone_check = gr.Button("🔍 检测可视化模块状态", size="sm")
+
+    btn_drone_check.click(fn=check_drone_status, inputs=[], outputs=[drone_status])
+
+
     gr.HTML("""
     <div style="text-align:center;margin-top:28px;color:#2d4a62;font-size:0.75rem;letter-spacing:1px;">
         EFFICIENTEDIT MVP &nbsp;·&nbsp; 成员E 前端原型 &nbsp;·&nbsp; 课程设计 2025

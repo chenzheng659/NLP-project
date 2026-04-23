@@ -32,6 +32,7 @@ except Exception as _drone_import_err:
     _drone_available = False
     DroneVisualizer = None
     PathProcessor = None
+    print(f"[警告] 无人机可视化模块加载失败，相关端点将返回 503。原因：{_drone_import_err}")
 
 from src.retriever import get_retriever
 from src.workflow  import run_workflow
@@ -145,7 +146,7 @@ async def generate_and_visualize(request: GenerateRequest):
             "code_generation": result,
             "visualization": {
                 "path_data": path_data,
-                "visualizer_url": f"/visualizer?mission_id={hash(request.instruction)}",
+                "visualizer_url": f"/visualizer?mission_id={abs(hash(request.instruction))}",
                 "has_visualization": True
             }
         }
