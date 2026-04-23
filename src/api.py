@@ -63,7 +63,7 @@ _path_data_cache: dict = {}
 # 无人机相关类别标签集合
 _DRONE_CATEGORIES = {"mission", "control", "tuning", "planning"}
 
-# 用于指令文本关键词检测的无人机相关词列表（模糊匹配，用于检索降级时仍能触发可视化）
+# 用于指令文本关键词检测的无人机相关词列表（小写，模糊匹配，用于检索降级时仍能触发可视化）
 _DRONE_KEYWORDS = [
     "无人机", "飞行", "路径规划", "避障", "躲避障碍", "起飞", "降落", "悬停",
     "飞控", "航线", "巡视", "巡检", "导航", "drone", "uav", "waypoint",
@@ -72,7 +72,11 @@ _DRONE_KEYWORDS = [
 
 
 def _is_drone_instruction(instruction: str) -> bool:
-    """基于关键词判断指令是否与无人机相关，用于检索降级时仍能触发可视化。"""
+    """基于关键词判断指令是否与无人机相关，用于检索降级时仍能触发可视化。
+
+    采用大小写不敏感的子串匹配（启发式兜底），可能存在误报，
+    建议仅在 retrieved_item 为空时作为降级检测手段使用。
+    """
     text = instruction.lower()
     return any(kw in text for kw in _DRONE_KEYWORDS)
 
