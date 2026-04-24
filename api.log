@@ -1,0 +1,9 @@
+INFO:     Will watch for changes in these directories: ['/home/qyy/NLP-project/src']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [631717] using StatReload
+INFO:     Started server process [631720]
+INFO:     Waiting for application startup.
+/home/qyy/miniconda3/envs/nlp/lib/python3.10/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+/home/qyy/miniconda3/envs/nlp/lib/python3.10/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(

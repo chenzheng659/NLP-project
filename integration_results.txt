@@ -1,0 +1,93 @@
+
+=== Case 1 (Mode 1, High Reuse) ===
+[模式一] 检索生成 | 指令: 计算一个列表的加权平均值，权重由另一个列表提供...
+  → 检索命中，使用检索代码作为草稿
+{
+  "mode": "retrieval_generation",
+  "retrieved_code": "def average(values):\n    return sum(values) / len(values)",
+  "before_code": "def average(values):\n    return sum(values) / len(values)",
+  "after_code": "def average(values):\n    return sum(values) / len(values)\ndef weighted_average(values, weights):\n    if len(values) != len(weights):\n        raise ValueError(\"The lengths of values and weights must be the same.\")\n    if not values:\n        raise ValueError(\"The input list cannot be empty.\")\n    weighted_sum = sum(v * w for v, w in zip(values, weights))\n    total_weight = sum(weights)\n    if total_weight == 0:\n        raise ValueError(\"The sum of weights cannot be zero.\")\n    return weighted_sum / total_weight",
+  "final_code": "def average(values):\n    return sum(values) / len(values)\ndef weighted_average(values, weights):\n    if len(values) != len(weights):\n        raise ValueError(\"The lengths of values and weights must be the same.\")\n    if not values:\n        raise ValueError(\"The input list cannot be empty.\")\n    weighted_sum = sum(v * w for v, w in zip(values, weights))\n    total_weight = sum(weights)\n    if total_weight == 0:\n        raise ValueError(\"The sum of weights cannot be zero.\")\n    return weighted_sum / total_weight",
+  "diff": "--- before/code.py\n+++ after/code.py\n@@ -1,2 +1,12 @@\n def average(values):\n\n-    return sum(values) / len(values)\n+    return sum(values) / len(values)\n\n+def weighted_average(values, weights):\n\n+    if len(values) != len(weights):\n\n+        raise ValueError(\"The lengths of values and weights must be the same.\")\n\n+    if not values:\n\n+        raise ValueError(\"The input list cannot be empty.\")\n\n+    weighted_sum = sum(v * w for v, w in zip(values, weights))\n\n+    total_weight = sum(weights)\n\n+    if total_weight == 0:\n\n+        raise ValueError(\"The sum of weights cannot be zero.\")\n\n+    return weighted_sum / total_weight",
+  "changed": true,
+  "patch_note": "将原函数修改为计算加权平均值的函数，增加了权重参数、长度校验、空列表校验和除零校验。",
+  "merge_method": "ast",
+  "llm_raw": "...[hidden]..."
+}
+
+=== Case 2 (Mode 1, Low Reuse) ===
+[模式一] 检索生成 | 指令: 解析一个 JSON 文件并提取其中所有的键名...
+  → 检索命中，使用检索代码作为草稿
+{
+  "mode": "retrieval_generation",
+  "retrieved_code": "def get_current_timestamp(format_str='%Y-%m-%d %H:%M:%S'):\n    import datetime\n    return datetime.datetime.now().strftime(format_str)",
+  "before_code": "def get_current_timestamp(format_str='%Y-%m-%d %H:%M:%S'):\n    import datetime\n    return datetime.datetime.now().strftime(format_str)",
+  "after_code": "def get_current_timestamp(format_str='%Y-%m-%d %H:%M:%S'):\n    import datetime\n    return datetime.datetime.now().strftime(format_str)\n\ndef extract_keys_from_json_file(file_path):\n    import json\n    with open(file_path, 'r', encoding='utf-8') as f:\n        data = json.load(f)\n    def _extract_keys(obj, keys_list):\n        if isinstance(obj, dict):\n            for key in obj.keys():\n                keys_list.append(key)\n                _extract_keys(obj[key], keys_list)\n        elif isinstance(obj, list):\n            for item in obj:\n                _extract_keys(item, keys_list)\n    all_keys = []\n    _extract_keys(data, all_keys)\n    return all_keys",
+  "final_code": "def get_current_timestamp(format_str='%Y-%m-%d %H:%M:%S'):\n    import datetime\n    return datetime.datetime.now().strftime(format_str)\n\ndef extract_keys_from_json_file(file_path):\n    import json\n    with open(file_path, 'r', encoding='utf-8') as f:\n        data = json.load(f)\n    def _extract_keys(obj, keys_list):\n        if isinstance(obj, dict):\n            for key in obj.keys():\n                keys_list.append(key)\n                _extract_keys(obj[key], keys_list)\n        elif isinstance(obj, list):\n            for item in obj:\n                _extract_keys(item, keys_list)\n    all_keys = []\n    _extract_keys(data, all_keys)\n    return all_keys",
+  "diff": "--- before/code.py\n+++ after/code.py\n@@ -1,3 +1,19 @@\n def get_current_timestamp(format_str='%Y-%m-%d %H:%M:%S'):\n\n     import datetime\n\n-    return datetime.datetime.now().strftime(format_str)\n+    return datetime.datetime.now().strftime(format_str)\n\n+\n\n+def extract_keys_from_json_file(file_path):\n\n+    import json\n\n+    with open(file_path, 'r', encoding='utf-8') as f:\n\n+        data = json.load(f)\n\n+    def _extract_keys(obj, keys_list):\n\n+        if isinstance(obj, dict):\n\n+            for key in obj.keys():\n\n+                keys_list.append(key)\n\n+                _extract_keys(obj[key], keys_list)\n\n+        elif isinstance(obj, list):\n\n+            for item in obj:\n\n+                _extract_keys(item, keys_list)\n\n+    all_keys = []\n\n+    _extract_keys(data, all_keys)\n\n+    return all_keys",
+  "changed": true,
+  "patch_note": "新增了函数 `extract_keys_from_json_file` 用于解析 JSON 文件并递归提取所有键名。",
+  "merge_method": "ast",
+  "llm_raw": "...[hidden]..."
+}
+
+=== Case 3 (Mode 2, Local Mod) ===
+[模式二] 直接编辑 | 指令: 给这个函数添加一个 reverse 参数，控制升序还是降序排列...
+{
+  "mode": "direct_edit",
+  "retrieved_code": null,
+  "before_code": "def sort_list(lst):\n    return sorted(lst)",
+  "after_code": "def sort_list(lst, reverse=False):\n    return sorted(lst, reverse=reverse)",
+  "final_code": "def sort_list(lst, reverse=False):\n    return sorted(lst, reverse=reverse)",
+  "diff": "--- before/code.py\n+++ after/code.py\n@@ -1,2 +1,2 @@\n-def sort_list(lst):\n\n-    return sorted(lst)\n+def sort_list(lst, reverse=False):\n\n+    return sorted(lst, reverse=reverse)",
+  "changed": true,
+  "patch_note": "为函数 `sort_list` 添加了 `reverse` 参数，用于控制排序顺序。",
+  "merge_method": "ast",
+  "llm_raw": "...[hidden]..."
+}
+
+=== Case 4 (Mode 2, No Mod) ===
+[模式二] 直接编辑 | 指令: 这个函数已经很好了，不需要任何修改...
+{
+  "mode": "direct_edit",
+  "retrieved_code": null,
+  "before_code": "def add(a, b):\n    return a + b",
+  "after_code": "def add(a, b):\n    return a + b",
+  "final_code": "def add(a, b):\n    return a + b",
+  "diff": "",
+  "changed": false,
+  "patch_note": "无需修改",
+  "merge_method": "text",
+  "llm_raw": "...[hidden]..."
+}
+
+=== Case 5 (Empty Instruction) ===
+[模式一] 检索生成 | 指令: ...
+  → 未检索到匹配，降级为纯生成
+{
+  "mode": "retrieval_generation",
+  "retrieved_code": "",
+  "before_code": "",
+  "after_code": "",
+  "final_code": "",
+  "diff": "",
+  "changed": false,
+  "patch_note": "无需修改",
+  "merge_method": "text",
+  "llm_raw": "...[hidden]..."
+}
+
+=== Case 6 (Invalid Python fallback) ===
+[模式二] 直接编辑 | 指令: 修复代码...
+{
+  "mode": "direct_edit",
+  "retrieved_code": null,
+  "before_code": "def bad_syntax(a, b:\n    return a+b",
+  "after_code": "def bad_syntax(a, b):\n    return a+b",
+  "final_code": "def bad_syntax(a, b):\n    return a+b",
+  "diff": "--- before/code.py\n+++ after/code.py\n@@ -1,2 +1,2 @@\n-def bad_syntax(a, b:\n\n+def bad_syntax(a, b):\n\n     return a+b",
+  "changed": true,
+  "patch_note": "修复了函数定义行中缺少右括号的语法错误。",
+  "merge_method": "text",
+  "llm_raw": "...[hidden]..."
+}
