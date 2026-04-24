@@ -1,141 +1,79 @@
-# 基于 EfficientEdit 的「检索 + 生成」混合代码生成框架
+# 基于 EfficientEdit 的“检索+生成”混合代码生成框架 (无人机领域定制版)
 
-# 一、项目简介
+## 1. 项目简介
 
-本项目是一个基于 EfficientEdit 核心思想构建的「检索 + 生成」混合代码生成与编辑框架。旨在解决大语言模型（LLM）从零生成代码时容易产生幻觉、上下文脱节或不符合本地项目规范等问题。核心思路是结合 RAG（检索增强生成）与 LLM 的代码编辑能力，在生成前从私有代码知识库中检索出可复用的“基础草稿”，再由 LLM 根据自然语言指令生成精确的代码补丁，最后通过 AST 级别智能融合，实现高效、可靠、规范的代码生成。
+本项目是一个先进的混合式代码生成框架，其核心思想源自斯坦福大学的 **EfficientEdit** 论文。它旨在将大型语言模型（LLM）的创造力与现有代码库的丰富上下文相结合，实现高效、精准且符合现有工程规范的代码生成与修改。
 
-# 二、系统架构
+与传统的“完全生成”模式不同，本框架采用**双模式智能路由**：
+- **检索+生成模式 (Retrieval-Augmented Generation, RAG)**: 当用户提出一个新功能需求时，系统首先从内部代码库（`data/code.json`）中检索最相似的代码片段作为“基础草稿”，然后引导 LLM 在此基础上进行修改和扩展。这极大地提高了代码的复用率和上下文一致性。
+- **直接编辑模式**: 当用户提供一段现有代码并要求修改时，系统会跳过检索步骤，直接将用户代码作为上下文，引导 LLM 执行精准的编辑操作。
 
-```text
-       [ 前端 (Gradio) ]
-              │ (提供双输入框：自然语言需求、可选的原始代码)
-              ▼
-    [ 后端 API 层 (FastAPI) ]
-              │ (暴露 /generate 接口接收请求)
-              ▼
-[ 工作流引擎 (workflow.py, 双模式路由) ]
-              │
-              ├──▶ [ 检索层 (BGE-M3 + FAISS) ] ──▶ [ 知识库 (code.json, 本地常用 Python 函数) ]
-              │
-              ▼
-[ 大模型调用层 (llm_client.py, DeepSeek API) ]
-              │ (根据模式套用 prompt，提取补丁，过滤 <think> 标签)
-              ▼
-[ 代码融合层 (patch_merger.py, AST 级合并) ]
-              │ (智能融合函数/类，若解析失败兜底至文本覆盖)
-              ▼
-      [ 返回响应 JSON ]
+这种混合模式使得框架既能创建新功能，又能无缝地维护和重构现有代码。
+
+## 2. 核心技术亮点
+
+### 2.1 手术级 AST 合并引擎
+为了解决 LLM 生成的代码补丁（Patch）与基础代码（Base Code）合并时可能出现的格式混乱、逻辑冲突甚至代码丢失问题，我们自研了一套基于 `libcst` (LibCST) 的**抽象语法树（AST）合并引擎** (`src/patch_merger.py`)。
+
+该引擎具备以下高级特性：
+- **递归方法级合并**: 当补丁仅修改一个类中的某个方法时，合并器会精准地替换该方法，而完美保留类中所有其他未被修改的方法、属性和注释，避免了传统文本替换可能导致的“整个类被覆盖”的灾难。
+- **Import 别名自动对齐**: 引擎会自动扫描基础代码中的 `import numpy as np` 这类别名，并智能地将补丁代码中的 `numpy.mean()` 自动重写为 `np.mean()`，确保代码风格和引用的高度一致性。
+- **鲁棒性机制与熔断保护**:
+    - **代码片段（Snippet）自动包装**: 针对 LLM 可能仅返回一个方法片段的场景，引擎能够智能地识别该片段（例如，通过 `self` 关键字判断），在基础代码中定位其所属的类，并动态地为其包裹上一个临时的 `class` 外壳，使其能够被 AST 解析器正确识别和合并。
+    - **最终防线**: 在任何 AST 解析或合并失败的极端情况下，系统会**自动熔断**，放弃合并并返回原始的基础代码，同时记录详细的错误日志。**此机制保证了用户的原始代码永远不会因合并失败而丢失**。
+
+### 2.2 无人机业务深度集成 (DJITelloPy)
+本项目针对无人机（特别是 Tello 系列）的业务场景进行了深度定制和功能扩展 (`src/drone/`)。
+- **代码到路径的自动转换**: 系统能够解析生成的 `djitellopy` 代码，提取出无人机的关键飞行动作（如 `takeoff`, `move_up`, `flip_forward` 等）。
+- **3D 轨迹可视化**: 利用 **Three.js** 3D 渲染引擎，将解析出的飞行动作序列实时渲染成一个可交互的三维飞行轨迹图。用户可以在浏览器中直观地看到代码所对应的无人机空间路径、航点和姿态变化。
+- **后端驱动的前端渲染**: 整个可视化页面由 FastAPI 后端动态生成和驱动，将飞行任务数据（路径、距离、预计时间等）注入到 Jinja2 模板中，实现了前后端的有效分离。
+
+## 3. 环境要求与安装
+
+**核心依赖**:
+- **Python**: 3.9+
+- **AST 解析**: `libcst`
+- **无人机控制**: `djitellopy` (或兼容的模拟器)
+- **后端服务**: `fastapi`, `uvicorn`
+- **前端界面**: `gradio`
+- **3D 可视化**: `three.js` (前端库，已包含在 `static` 目录)
+- **其他**: `numpy`, `faiss-cpu` (用于代码检索)
+
+*详细依赖请参考 `requirements.txt` 文件。*
+
+## 4. 使用指南
+
+**1. 启动后端 API 服务**:
+```bash
+# 确保在项目根目录下执行
+python -m uvicorn src.api:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-# 三、双模式工作流说明
+**2. 启动前端 Gradio 界面**:
+```bash
+# Gradio 应用脚本
+python frontend/app.py
+```
+访问 `http://127.0.0.1:7860` 即可与应用交互。
 
-本项目支持两种代码处理模式，工作流引擎会根据用户是否传入 `source_code` 自动进行路由：
+## 5. 项目结构说明
 
-*   **模式一（检索生成模式）**：
-    仅输入自然语言需求。系统首先使用向量检索器在本地 `code.json` 中召回最相关的代码片段作为“基础草稿”；随后构建检索生成专用 Prompt 引导 LLM 输出代码修改补丁；最后使用代码融合模块将草稿与补丁合并为最终输出。
-*   **模式二（直接编辑模式）**：
-    输入原始代码 + 编辑指令。系统跳过检索阶段，直接以用户提供的原始代码作为“基础草稿”；随后构建直接编辑专用 Prompt 让 LLM 针对性地输出修改补丁；最后通过代码融合模块将修改智能合并到原始代码中。
-
-# 四、目录结构
-
-```text
-/
+```
+.
+├── frontend/             # Gradio 前端应用
+│   └── app.py
+├── src/                  # 核心后端逻辑
+│   ├── api.py            # FastAPI 应用入口和路由
+│   ├── llm_client.py     # LLM (DeepSeek) API 客户端与响应解析
+│   ├── patch_merger.py   # 核心：AST 智能合并引擎
+│   ├── retriever.py      # 基于 FAISS 的代码检索引擎
+│   ├── workflow.py       # 业务逻辑编排（检索/直接编辑 -> LLM -> 合并）
+│   └── drone/            # 无人机业务模块
+│       ├── path_processor.py    # 路径数据处理与计算
+│       ├── threejs_visualizer.py # Three.js 可视化页面生成器
+│       └── static/              # 3D 模型、JS 和 CSS 文件
 ├── data/
-│   ├── code.json                 # 私有代码知识库（包含数十个 Python 工具函数与算法）
-│   └── prompt_templates.txt      # 双模式的系统提示词模板库
-├── src/
-│   ├── api.py                    # FastAPI 服务入口，暴露核心的 /generate 接口
-│   ├── workflow.py               # 核心工作流引擎，负责串联检索、调用与合并模块
-│   ├── llm_client.py             # 大模型调用与响应解析（含重试、容错、<think>过滤等）
-│   ├── patch_merger.py           # 代码融合模块（基于 libcst 的 AST 级智能合并 + 文本兜底）
-│   ├── retriever.py              # 检索器适配层（对底层 retriever 模块进行单例封装）
-│   ├── retriever_and_schemas.py  # 检索器底层实现（基于 BGE-M3 向量化 + FAISS 索引双阶检索）
-│   └── config.py                 # 全局配置文件（API Key、路径、模型超时与阈值等）
-├── docs/
-│   └── member_c_report.md        # 成员C模块（模型调用与代码融合）的详细技术与重构文档
-├── tests/
-│   ├── test_llm_client.py        # 针对大模型返回内容的解析逻辑及容错重试的单元测试
-│   └── test_patch_merger.py      # 针对 AST 智能合并与各种异常边界的合并逻辑测试
-└── README.md                     # 项目全局介绍文档（本文档）
+│   ├── code.json         # 私有代码库（用于检索）
+│   └── prompt_templates.txt # Prompt 工程模板
+└── README.md
 ```
-
-# 五、快速启动
-
-## 1. 环境安装
-确保本地已安装 Python 3.8+（推荐使用 conda 创建隔离环境，例如 Python 3.10），然后在项目根目录下执行：
-```bash
-pip install -r requirements.txt
-```
-
-## 2. 配置
-运行前，请打开 `src/config.py`，根据实际情况修改配置参数：
-*   **`DEEPSEEK_API_KEY`**: 填入你自己的 DeepSeek API 密钥。
-*   **`LLM_TIMEOUT`**: 大模型请求超时时间（默认 60.0 秒）。
-*   **`RECALL_K`**: FAISS 第一阶段向量召回的数量（默认 5）。
-*   **`RERANK_THRESHOLD`**: 交叉编码器重排的及格分数阈值，低于此值将放弃草稿进入纯生成模式（默认 0.0）。
-*   **模型**: 默认使用了轻量级的 `BAAI/bge-base-zh-v1.5` 与 `BAAI/bge-reranker-base`。
-
-## 3. 启动服务
-在项目根目录下，使用 `uvicorn` 启动 FastAPI 后端服务（请勿在 src 目录内启动以避免导包错误）：
-```bash
-python -m uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
-```
-
-## 4. 接口调用示例
-
-### 示例 A：模式一（仅自然语言）
-**⚠️ 提示：在 WSL 或挂代理的系统环境中，请加 `--noproxy "*"` 防止本地请求被拦截。**
-
-```bash
-curl --noproxy "*" -X POST "http://127.0.0.1:8000/generate" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "instruction": "计算一个列表的加权平均值"
-         }'
-```
-**预期返回 JSON 结构**：
-```json
-{
-  "mode": "retrieval_generation",
-  "retrieved_code": "def average(values):\n    return sum(values) / len(values)",
-  "before_code": "def average(values):\n    return sum(values) / len(values)",
-  "after_code": "def weighted_average(values, weights):\n    return sum(v * w for v, w in zip(values, weights)) / sum(weights)",
-  "diff": "--- before/code.py\n+++ after/code.py\n...",
-  "changed": true,
-  "patch_note": "修改为计算加权平均值，增加了 weights 参数",
-  "merge_method": "ast"
-}
-```
-
-### 示例 B：模式二（原始代码 + 编辑指令）
-```bash
-curl --noproxy "*" -X POST "http://127.0.0.1:8000/generate" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "instruction": "给这个函数加上类型提示",
-           "source_code": "def add(a, b):\n    return a + b"
-         }'
-```
-**预期返回 JSON 结构**：
-```json
-{
-  "mode": "direct_edit",
-  "retrieved_code": null,
-  "before_code": "def add(a, b):\n    return a + b",
-  "after_code": "def add(a: int, b: int) -> int:\n    return a + b",
-  "diff": "--- before/code.py\n+++ after/code.py\n...",
-  "changed": true,
-  "patch_note": "增加了基于 int 类型的 Type Hints",
-  "merge_method": "ast"
-}
-```
-
-# 六、小组成员与分工
-
-| 成员 | 负责模块 | 核心文件 |
-|------|----------|----------|
-| 陈峥 | 检索系统 + 架构设计 | `retriever_and_schemas.py`, `retriever.py` |
-| 张明钰 | 数据集 + 提示词 | `code.json`, `prompt_templates.txt` |
-| 覃钰源 | 模型调用 + 代码融合 | `llm_client.py`, `patch_merger.py` |
-| 胡博雄 | 后端服务 + 工作流引擎 | `api.py`, `workflow.py` |
-| 梁辰飞 | 前端界面 + 测试演示 | gradio 前端, `tests/` |
