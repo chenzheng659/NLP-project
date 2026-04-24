@@ -9,7 +9,6 @@ llm_client.py - LLM 调用模块
 
 import re
 import asyncio
-import textwrap
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
@@ -75,7 +74,7 @@ def get_templates() -> dict:
 
 # ── Prompt 构造 ────────────────────────────────────
 
-# 追加在每个模板末尾的输出格式要求
+# 追加在每个模板末尾的输出格式要求，要求 LLM 输出修改前后对比
 _OUTPUT_FORMAT_INSTRUCTION = """
 
 ---
@@ -83,24 +82,29 @@ _OUTPUT_FORMAT_INSTRUCTION = """
 
 请按以下格式输出，不要输出其他内容：
 
+### 修改前
+```python
+{原始代码或基础草稿}
+```
+
 ### 修改后
 ```python
-{修改后的代码}
+{修改后的完整代码}
 ```
 
 ### 修改说明
-{一句话说明做了什么改动。如果无需修改，请填写"无需修改"。}
-
-**重要提示**:
-- 如果您只修改一个类中的某个方法，请在 `修改后` 的代码块中**仅提供这个类以及被修改的方法**，无需包含整个文件的所有代码。
-- 如果您要新增一个函数或类，请在 `修改后` 的代码块中仅提供新增的完整代码。
-- 只有当您要进行全局重构或修改多个独立的函数/类时，才需要提供完整的模块代码。
+{一句话说明做了什么改动。如果无需修改，请填写"无需修改"，并在上述两部分中均输出完整的原始代码。}
 """
 
 
 def build_prompt(instruction: str, base_code: str, has_source_code: bool) -> str:
     """
     根据是否有源代码选择对应模板并填充变量。
+
+    Args:
+        instruction: 用户的自然语言需求/指令
+        base_code:   基础草稿代码（无源码时为检索结果，有源码时为用户提供的代码）
+        has_source_code: 布尔值，用于选择直接编辑模式（True）或检索生成模式（False）
     """
     templates = get_templates()
 
@@ -157,10 +161,12 @@ async def call_llm(prompt: str) -> str:
 def parse_llm_response(raw: str, base_code: str) -> ParsedResponse:
     """
     从 LLM 输出中解析出结构化字段。
-    处理 <think> 标签干扰、"无需修改"的语义冲突、代码块缺失等问题。
+    处理 <think> 标签干扰、"无需修改"的语义冲突等问题。
     """
+    # 1. 剔除 <think> 标签，防止推理过程干扰
     raw_cleaned = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
 
+    # 2. 检测"无修改"关键字兜底 (仅在有 base_code 且不是完全新建代码时生效)
     no_change_keywords = ["无修改", "no changes needed", "无需修改", "不需要修改"]
     if base_code.strip() and any(k in raw_cleaned.lower() for k in no_change_keywords):
         return ParsedResponse(
@@ -171,37 +177,36 @@ def parse_llm_response(raw: str, base_code: str) -> ParsedResponse:
             raw=raw,
         )
 
-    modified_code = None
-    note_match = re.search(r"###\s*修改说明\s*\n(.+)", raw_cleaned, re.DOTALL)
-    patch_note = note_match.group(1).strip() if note_match else "无"
+    def extract_block(label: str) -> Optional[str]:
+        # 匹配 ### 修改前/后 下方的 ```python ... ``` 代码块
+        pattern = rf"###\s*{label}\s*```(?:python)?\n(.*?)```"
+        m = re.search(pattern, raw_cleaned, re.DOTALL)
+        return m.group(1).strip() if m else None
 
-    after_match = re.search(r"###\s*修改后\s*```(?:python)?\n(.*?)```", raw_cleaned, re.DOTALL)
-    if after_match:
-        modified_code = after_match.group(1).strip()
-    else:
-        fallback_blocks = re.findall(r"```(?:python)?\n(.*?)```", raw_cleaned, re.DOTALL)
+    before = extract_block("修改前") or base_code
+    after = extract_block("修改后")
+
+    # 提取修改说明
+    note_match = re.search(r"###\s*修改说明\s*\n(.+)", raw_cleaned)
+    patch_note = note_match.group(1).strip() if note_match else ""
+
+    # 兜底：如果格式不对（例如模型只输出了一个代码块），提取最后那个代码块作为 after
+    if after is None:
+        fallback_blocks = re.findall(
+            r"```(?:python)?\n(.*?)```", raw_cleaned, re.DOTALL
+        )
         if fallback_blocks:
-            modified_code = fallback_blocks[-1].strip()
+            after = fallback_blocks[-1].strip()
         else:
-            modified_code = raw_cleaned
+            after = raw_cleaned.strip()
 
-    if modified_code is not None:
-        modified_code = textwrap.dedent(modified_code).strip()
-
-    # CRITICAL FIX: Ensure modified is True if the extracted code is different,
-    # even if it's a fallback.
-    is_modified = False
-    if modified_code is not None:
-        if base_code.strip() != modified_code.strip():
-            is_modified = True
-
-    final_modified_code = modified_code if is_modified else base_code
+    # 最后再检查一遍内容是否实际发生了修改
+    is_modified = after.strip() != before.strip() and after.strip() != base_code.strip()
 
     return ParsedResponse(
-        original_code=base_code,
-        modified_code=final_modified_code,
+        original_code=before,
+        modified_code=after if is_modified else base_code,
         explanation=patch_note,
         modified=is_modified,
         raw=raw,
     )
-

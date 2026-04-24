@@ -6,7 +6,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import httpx
 
 # 将 code 目录加入 PYTHONPATH 使得测试能够正常引入
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../code')))
 
 from llm_client import parse_llm_response, call_llm, ParsedResponse
 

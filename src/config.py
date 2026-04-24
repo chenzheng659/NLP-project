@@ -9,6 +9,14 @@ from pathlib import Path
 # ── 路径 ──────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent / "data"
 DATASET_PATH = str(BASE_DIR / "code.json")
+
+# 所有参与检索的数据集文件（含无人机专项数据集）
+DATASET_PATHS = [
+    str(BASE_DIR / "code.json"),
+    str(BASE_DIR / "misssion.json"),
+    str(BASE_DIR / "control.json"),
+    str(BASE_DIR / "planning.json"),
+]
 PROMPT_TEMPLATE_PATH = str(BASE_DIR / "prompt_templates.txt")
 
 # ── LLM API ───────────────────────────────────────
@@ -23,3 +31,16 @@ EMBED_MODEL_NAME = "BAAI/bge-base-zh-v1.5"
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
 RECALL_K = 5  # 第一阶段向量召回数量
 RERANK_THRESHOLD = 0.8  # 重排分数阈值，低于此值降级为纯生成
+
+DRONE_VISUALIZER_CONFIG = {
+    "enable_visualization": True,
+    "threejs_version": "r158",  # Three.js版本
+    "default_drone_model": "static/models/drone.glb",
+    "path_color": 0x00ff00,  # 路径线颜色（绿色）
+    "grid_size": 100,  # 3D网格大小
+    "camera_position": {"x": 50, "y": 50, "z": 50},
+    "animation_speed": 1.0,  # 动画速度倍数
+}
+
+API_PREFIX = "/api"
+VISUALIZER_PREFIX = "/visualizer"

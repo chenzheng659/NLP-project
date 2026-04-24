@@ -1,4 +1,5 @@
 import json
+import os
 import torch
 import faiss
 import numpy as np
@@ -20,7 +21,8 @@ class EditResponse(BaseModel):
 
 class CodeRetriever:
     def __init__(self, 
-                 dataset_path: str, 
+                 dataset_path: str = None, 
+                 dataset_paths: List[str] = None,
                  embed_model_name: str = "BAAI/bge-m3", 
                  rerank_model_name: str = "BAAI/bge-reranker-v2-m3"):
         
@@ -37,8 +39,14 @@ class CodeRetriever:
         self.documents: List[str] = []
         self.index = None
         self.embedding_dim = self.embedder.get_sentence_embedding_dimension()
-        
-        self._load_and_index_data(dataset_path)
+
+        # 支持单路径或多路径加载
+        if dataset_paths:
+            self._load_and_index_data(dataset_paths)
+        elif dataset_path:
+            self._load_and_index_data([dataset_path])
+        else:
+            raise ValueError("dataset_path 或 dataset_paths 必须提供其中之一")
 
     def _format_document(self, item: Dict) -> str:
         """
@@ -53,12 +61,27 @@ class CodeRetriever:
         formatted_text = f"Function Name: {func_name}\nDescription: {docstring}\nCode Implementation:\n{code}"
         return formatted_text
 
-    def _load_and_index_data(self, dataset_path: str):
-        with open(dataset_path, 'r', encoding='utf-8') as f:
-            self.code_data = json.load(f)
-        
-        if not self.code_data:
-            raise ValueError("代码库为空。")
+    def _load_and_index_data(self, dataset_paths: List[str]):
+        merged: List[Dict] = []
+        for path in dataset_paths:
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    items = json.load(f)
+                # 为没有 category 字段的条目推断分类标签（取文件名去扩展名并规范化）
+                raw_name = os.path.splitext(os.path.basename(path))[0]
+                # 规范化文件名拼写错误（如 misssion → mission）
+                inferred_category = raw_name.rstrip("s") + "ion" if raw_name.endswith("ssion") else raw_name
+                for item in items:
+                    if 'category' not in item:
+                        item = {**item, 'category': inferred_category}
+                    merged.append(item)
+                print(f"已加载数据集: {path}，共 {len(items)} 条记录")
+            except Exception as e:
+                print(f"[警告] 跳过数据集 {path}：{e}")
+
+        if not merged:
+            raise ValueError("所有数据集均为空或加载失败。")
+        self.code_data = merged
 
         # 1. 格式化文档
         self.documents = [self._format_document(item) for item in self.code_data]
