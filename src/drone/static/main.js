@@ -4,7 +4,7 @@ let animationId = null, clock = new THREE.Clock();
 let currentWaypointIndex = 0, isPlaying = false, animationSpeed = 1.0;
 let waypoints = [];
 
-function initVisualization() {
+async function initVisualization() {
     // 1. 创建场景
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a2e);
@@ -45,8 +45,8 @@ function initVisualization() {
     // 8. 处理路径数据
     processPathData();
     
-    // 9. 加载无人机模型
-    loadDroneModel();
+    // 9. 加载无人机模型（等待完成）
+    await loadDroneModel();
     
     // 10. 初始化路径点列表
     initPathPointsList();
@@ -91,41 +91,90 @@ function processPathData() {
 }
 
 function loadDroneModel() {
-    // 使用占位几何体（实际应加载GLTF模型）
-    const geometry = new THREE.BoxGeometry(3, 1, 3);
-    const material = new THREE.MeshPhongMaterial({ 
-        color: 0x3498db,
-        emissive: 0x072534,
-        side: THREE.DoubleSide,
-        flatShading: true
-    });
-    
-    drone = new THREE.Mesh(geometry, material);
-    drone.castShadow = true;
-    
-    // 添加螺旋桨
-    const propellerGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8);
-    const propellerMaterial = new THREE.MeshPhongMaterial({ color: 0x2c3e50 });
-    
-    for (let i = 0; i < 4; i++) {
-        const propeller = new THREE.Mesh(propellerGeometry, propellerMaterial);
-        const angle = (i * Math.PI) / 2;
-        const radius = 2;
-        propeller.position.set(
-            Math.cos(angle) * radius,
-            0.5,
-            Math.sin(angle) * radius
-        );
-        drone.add(propeller);
-    }
-    
-    // 初始位置
-    if (PATH_DATA.path && PATH_DATA.path.length > 0) {
-        const startPoint = PATH_DATA.path[0];
-        drone.position.set(startPoint.x, startPoint.z, startPoint.y);
-    }
-    
-    scene.add(drone);
+  return new Promise((resolve) => {
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      '/static/drone.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(0.3, 0.3, 0.3);        // 按需调整大小
+        model.rotation.y = Math.PI / 2;         // 朝向调整
+
+        // ───── 稳健居中：使用 Group 包裹 ─────
+        const box = new THREE.Box3().setFromObject(model);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+
+        const droneGroup = new THREE.Group();
+        droneGroup.add(model);
+
+        // 将模型置于 group 内，使 model 的中心偏移到 group 原点
+        model.position.set(-center.x, -center.y, -center.z);
+
+        // 设置阴影（遍历 model 内部）
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        // 初始位置：设置 group 的世界坐标（此时 group 内模型中心即在路径点上）
+        if (PATH_DATA.path && PATH_DATA.path.length > 0) {
+          const startPoint = PATH_DATA.path[0];
+          droneGroup.position.set(startPoint.x, startPoint.z, startPoint.y);
+        } else {
+          droneGroup.position.set(0, 0, 0);
+        }
+
+        // 调试输出，确认居中效果
+        const newBox = new THREE.Box3().setFromObject(droneGroup);
+        const newCenter = new THREE.Vector3();
+        newBox.getCenter(newCenter);
+        console.log('模型原始包围盒中心:', center);
+        console.log('包裹后包围盒中心（Group原点）:', newCenter);
+        // 正常情况 newCenter 应为 (0,0,0) 或极接近
+
+        drone = droneGroup;            // 全局无人机变量指向 Group
+        scene.add(drone);
+        resolve();
+      },
+      undefined,
+      (error) => {
+        console.error('模型加载失败，使用默认立方体:', error);
+        createFallbackDrone();
+        resolve();
+      }
+    );
+  });
+}
+
+function createFallbackDrone() {
+  const geometry = new THREE.BoxGeometry(3, 1, 3);
+  const material = new THREE.MeshPhongMaterial({ 
+    color: 0x3498db,
+    emissive: 0x072534,
+    side: THREE.DoubleSide,
+    flatShading: true
+  });
+  drone = new THREE.Mesh(geometry, material);
+  drone.castShadow = true;
+  
+  const propellerGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8);
+  const propellerMaterial = new THREE.MeshPhongMaterial({ color: 0x2c3e50 });
+  for (let i = 0; i < 4; i++) {
+    const propeller = new THREE.Mesh(propellerGeometry, propellerMaterial);
+    const angle = (i * Math.PI) / 2;
+    const radius = 2;
+    propeller.position.set(Math.cos(angle) * radius, 0.5, Math.sin(angle) * radius);
+    drone.add(propeller);
+  }
+  
+  if (PATH_DATA.path && PATH_DATA.path.length > 0) {
+    const startPoint = PATH_DATA.path[0];
+    drone.position.set(startPoint.x, startPoint.z, startPoint.y);
+  }
+  scene.add(drone);
 }
 
 function addLabel(position, text) {
@@ -146,7 +195,7 @@ function addLabel(position, text) {
     const texture = new THREE.CanvasTexture(canvas);
     const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
     const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.position.set(position.x, position.y + 3, position.z);
+    sprite.position.set(position.x + 5, position.y + 3, position.z);
     sprite.scale.set(canvas.width / 10, canvas.height / 10, 1);
     scene.add(sprite);
 }
@@ -219,9 +268,9 @@ function animateDrone() {
         drone.position.z = current.y + (next.y - current.y) * t;
         
         // 更新螺旋桨旋转
-        drone.children.forEach((propeller, i) => {
-            propeller.rotation.y += 0.5 * animationSpeed;
-        });
+        //drone.children.forEach((propeller, i) => {
+        //    propeller.rotation.y += 0.5 * animationSpeed;
+        //});**
     }
     
     updateHUD();
