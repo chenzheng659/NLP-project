@@ -9,7 +9,7 @@ sys.modules['faiss'] = MagicMock()
 sys.modules['sentence_transformers'] = MagicMock()
 sys.modules['numpy'] = MagicMock()
 
-sys.path.append('code')
+sys.path.append('src')
 sys.path.append('project')
 
 import workflow
