@@ -1,0 +1,177 @@
+[
+  {
+    "function_name": "boolean",
+    "code": "def boolean(obj):\n    \"\"\"\n    Convert obj to a boolean value.\n    If obj is string, obj will converted by case-insensitive way:\n        * convert `yes`, `y`, `on`, `true`, `t`, `1` to True\n        * convert `no`, `n`, `off`, `false`, `f`, `0` to False\n        * raising TypeError if other values passed\n    If obj is non-string, obj will converted by bool(obj).\n    \"\"\"\n    try:\n        text = obj.strip().lower()\n    except AttributeError:\n        return bool(obj)\n    if text in ('yes', 'y', 'on', 'true', 't', '1'):\n        return True\n    elif text in ('no', 'n', 'off', 'false', 'f', '0'):\n        return False\n    else:\n        raise ValueError('Unable to convert {!r} to a boolean value.'.format(text))",
+    "docstring": "Convert obj to a boolean value.\nIf obj is string, obj will converted by case-insensitive way:\n    * convert `yes`, `y`, `on`, `true`, `t`, `1` to True\n    * convert `no`, `n`, `off`, `false`, `f`, `0` to False\n    * raising TypeError if other values passed\nIf obj is non-string, obj will converted by bool(obj)."
+  },
+  {
+    "function_name": "_rstrip_L",
+    "code": "def _rstrip_L(func):\n    if PY2:\n\n        @functools.wraps(func)\n        def wrapper(x):\n            return func(x).rstrip('L')\n        return wrapper\n    return func",
+    "docstring": ""
+  },
+  {
+    "function_name": "bin2oct",
+    "code": "@_rstrip_L\ndef bin2oct(x):\n    \"\"\"\n    Convert binary string to octal string.\n    For instance: '1001' -> '11'\n    \"\"\"\n    return oct(int(x, 2))[_oct_index:]",
+    "docstring": "Convert binary string to octal string.\nFor instance: '1001' -> '11'"
+  },
+  {
+    "function_name": "bin2dec",
+    "code": "def bin2dec(x):\n    \"\"\"\n    Convert binary string to decimal number.\n    For instance: '11' -> 3\n    \"\"\"\n    return int(x, 2)",
+    "docstring": "Convert binary string to decimal number.\nFor instance: '11' -> 3"
+  },
+  {
+    "function_name": "bin2hex",
+    "code": "@_rstrip_L\ndef bin2hex(x):\n    \"\"\"\n    Convert binary string to hexadecimal string.\n    For instance: '11010' -> '1a'\n    \"\"\"\n    return hex(int(x, 2))[2:]",
+    "docstring": "Convert binary string to hexadecimal string.\nFor instance: '11010' -> '1a'"
+  },
+  {
+    "function_name": "oct2bin",
+    "code": "@_rstrip_L\ndef oct2bin(x):\n    \"\"\"\n    Convert octal string to binary string.\n    For instance: '11' -> '1001'\n    \"\"\"\n    return bin(int(x, 8))[2:]",
+    "docstring": "Convert octal string to binary string.\nFor instance: '11' -> '1001'"
+  },
+  {
+    "function_name": "oct2dec",
+    "code": "def oct2dec(x):\n    \"\"\"\n    Convert octal string to decimal number.\n    For instance: '11' -> 9\n    \"\"\"\n    return int(x, 8)",
+    "docstring": "Convert octal string to decimal number.\nFor instance: '11' -> 9"
+  },
+  {
+    "function_name": "oct2hex",
+    "code": "@_rstrip_L\ndef oct2hex(x):\n    \"\"\"\n    Convert octal string to hexadecimal string.\n    For instance: '32' -> '1a'\n    \"\"\"\n    return hex(int(x, 8))[2:]",
+    "docstring": "Convert octal string to hexadecimal string.\nFor instance: '32' -> '1a'"
+  },
+  {
+    "function_name": "dec2bin",
+    "code": "@_rstrip_L\ndef dec2bin(x):\n    \"\"\"\n    Convert decimal number to binary string.\n    For instance: 3 -> '11'\n    \"\"\"\n    return bin(x)[2:]",
+    "docstring": "Convert decimal number to binary string.\nFor instance: 3 -> '11'"
+  },
+  {
+    "function_name": "dec2oct",
+    "code": "@_rstrip_L\ndef dec2oct(x):\n    \"\"\"\n    Convert decimal number to octal string.\n    For instance: 9 -> '11'\n    \"\"\"\n    return oct(x)[_oct_index:]",
+    "docstring": "Convert decimal number to octal string.\nFor instance: 9 -> '11'"
+  },
+  {
+    "function_name": "dec2hex",
+    "code": "@_rstrip_L\ndef dec2hex(x):\n    \"\"\"\n    Convert decimal number to hexadecimal string.\n    For instance: 26 -> '1a'\n    \"\"\"\n    return hex(x)[2:]",
+    "docstring": "Convert decimal number to hexadecimal string.\nFor instance: 26 -> '1a'"
+  },
+  {
+    "function_name": "hex2bin",
+    "code": "@_rstrip_L\ndef hex2bin(x):\n    \"\"\"\n    Convert hexadecimal string to binary string.\n    For instance: '1a' -> '11010'\n    \"\"\"\n    return bin(int(x, 16))[2:]",
+    "docstring": "Convert hexadecimal string to binary string.\nFor instance: '1a' -> '11010'"
+  },
+  {
+    "function_name": "hex2oct",
+    "code": "@_rstrip_L\ndef hex2oct(x):\n    \"\"\"\n    Convert hexadecimal string to octal string.\n    For instance: '1a' -> '32'\n    \"\"\"\n    return oct(int(x, 16))[_oct_index:]",
+    "docstring": "Convert hexadecimal string to octal string.\nFor instance: '1a' -> '32'"
+  },
+  {
+    "function_name": "hex2dec",
+    "code": "def hex2dec(x):\n    \"\"\"\n    Convert hexadecimal string to decimal number.\n    For instance: '1a' -> 26\n    \"\"\"\n    return int(x, 16)",
+    "docstring": "Convert hexadecimal string to decimal number.\nFor instance: '1a' -> 26"
+  },
+  {
+    "function_name": "wrapper",
+    "code": "@functools.wraps(func)\ndef wrapper(x):\n    return func(x).rstrip('L')",
+    "docstring": ""
+  },
+  {
+    "function_name": "read_file_lines",
+    "code": "def read_file_lines(filepath, encoding='utf-8'):\n    \"\"\"\n    Read a text file and return a list of stripped lines.\n\n    Args:\n        filepath (str): Path to the file.\n        encoding (str): File encoding, default 'utf-8'.\n\n    Returns:\n        list: List of lines with trailing newlines removed.\n\n    Raises:\n        FileNotFoundError: If the file does not exist.\n    \"\"\"\n    with open(filepath, 'r', encoding=encoding) as f:\n        return [line.rstrip('\\n\\r') for line in f]",
+    "docstring": "Read a text file and return a list of stripped lines."
+  },
+  {
+    "function_name": "write_file_lines",
+    "code": "def write_file_lines(filepath, lines, encoding='utf-8'):\n    \"\"\"\n    Write a list of strings to a text file, each string as a line.\n\n    Args:\n        filepath (str): Path to the output file.\n        lines (list): List of strings to write.\n        encoding (str): File encoding, default 'utf-8'.\n    \"\"\"\n    with open(filepath, 'w', encoding=encoding) as f:\n        for line in lines:\n            f.write(line + '\\n')",
+    "docstring": "Write a list of strings to a text file, each string as a line."
+  },
+  {
+    "function_name": "flatten_list",
+    "code": "def flatten_list(nested_list):\n    \"\"\"\n    Flatten a nested list by one level.\n\n    Args:\n        nested_list (list): A list that may contain sub-lists.\n\n    Returns:\n        list: A new list with all direct sub-list elements concatenated.\n\n    Example:\n        >>> flatten_list([1, [2, 3], 4])\n        [1, 2, 3, 4]\n    \"\"\"\n    result = []\n    for item in nested_list:\n        if isinstance(item, list):\n            result.extend(item)\n        else:\n            result.append(item)\n    return result",
+    "docstring": "Flatten a nested list by one level."
+  },
+  {
+    "function_name": "safe_get_dict_value",
+    "code": "def safe_get_dict_value(d, key, default=None, case_insensitive=False):\n    \"\"\"\n    Safely get a value from a dictionary, optionally with case-insensitive key lookup.\n\n    Args:\n        d (dict): The dictionary to query.\n        key (str): The key to look up.\n        default (any): Value returned if key is not found.\n        case_insensitive (bool): If True, convert keys to lower case before lookup.\n\n    Returns:\n        any: The value associated with key, or default if not found.\n    \"\"\"\n    if case_insensitive:\n        for k, v in d.items():\n            if isinstance(k, str) and k.lower() == key.lower():\n                return v\n        return default\n    return d.get(key, default)",
+    "docstring": "Safely get a value from a dictionary, optionally with case-insensitive key lookup."
+  },
+  {
+    "function_name": "is_valid_email",
+    "code": "import re\n\ndef is_valid_email(email):\n    \"\"\"\n    Check if a string is a valid email address using a simple regex pattern.\n\n    Args:\n        email (str): The email address to validate.\n\n    Returns:\n        bool: True if the email format is valid, False otherwise.\n    \"\"\"\n    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'\n    return re.match(pattern, email) is not None",
+    "docstring": "Check if a string is a valid email address using a simple regex pattern."
+  },
+  {
+    "function_name": "chunk_list",
+    "code": "def chunk_list(lst, chunk_size):\n    \"\"\"\n    Split a list into smaller lists of a given size.\n\n    Args:\n        lst (list): The list to split.\n        chunk_size (int): Maximum size of each chunk.\n\n    Returns:\n        list of lists: Chunks of the original list.\n\n    Example:\n        >>> chunk_list([1,2,3,4,5], 2)\n        [[1,2], [3,4], [5]]\n    \"\"\"\n    return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]",
+    "docstring": "Split a list into smaller lists of a given size."
+  },
+  {
+    "function_name": "retry_on_exception",
+    "code": "import time\nfrom functools import wraps\n\ndef retry_on_exception(max_retries=3, delay=1, exceptions=(Exception,)):\n    \"\"\"\n    Decorator to retry a function if it raises specified exceptions.\n\n    Args:\n        max_retries (int): Maximum number of retry attempts.\n        delay (float): Seconds to wait between retries.\n        exceptions (tuple): Exception types to catch and retry on.\n\n    Returns:\n        function: Decorated function.\n    \"\"\"\n    def decorator(func):\n        @wraps(func)\n        def wrapper(*args, **kwargs):\n            for attempt in range(max_retries + 1):\n                try:\n                    return func(*args, **kwargs)\n                except exceptions as e:\n                    if attempt == max_retries:\n                        raise\n                    time.sleep(delay)\n            return None\n        return wrapper\n    return decorator",
+    "docstring": "Decorator to retry a function if it raises specified exceptions."
+  },
+  {
+    "function_name": "calculate_fibonacci",
+    "code": "def calculate_fibonacci(n):\n    \"\"\"\n    Return the n-th Fibonacci number (0-indexed) using iterative method.\n\n    Args:\n        n (int): Non-negative integer index.\n\n    Returns:\n        int: The n-th Fibonacci number.\n\n    Example:\n        >>> calculate_fibonacci(0)\n        0\n        >>> calculate_fibonacci(6)\n        8\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n must be non-negative\")\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a",
+    "docstring": "Return the n-th Fibonacci number (0-indexed) using iterative method."
+  },
+  {
+    "function_name": "merge_dicts",
+    "code": "def merge_dicts(dict1, dict2, overwrite=True):\n    \"\"\"\n    Merge two dictionaries. If keys conflict, the second dictionary's values\n    take precedence when overwrite=True.\n\n    Args:\n        dict1 (dict): First dictionary.\n        dict2 (dict): Second dictionary.\n        overwrite (bool): If True, dict2 values override dict1 values on conflict.\n\n    Returns:\n        dict: A new dictionary containing merged key-value pairs.\n    \"\"\"\n    result = dict1.copy()\n    if overwrite:\n        result.update(dict2)\n    else:\n        for k, v in dict2.items():\n            if k not in result:\n                result[k] = v\n    return result",
+    "docstring": "Merge two dictionaries with optional conflict handling."
+  },
+  {
+    "function_name": "get_current_timestamp",
+    "code": "import datetime\n\ndef get_current_timestamp(format_str='%Y-%m-%d %H:%M:%S'):\n    \"\"\"\n    Return current timestamp as a formatted string.\n\n    Args:\n        format_str (str): strftime format string.\n\n    Returns:\n        str: Current timestamp.\n\n    Example:\n        >>> get_current_timestamp()\n        '2025-01-15 14:30:00'\n    \"\"\"\n    return datetime.datetime.now().strftime(format_str)",
+    "docstring": "Return current timestamp as a formatted string."
+  },
+  {
+    "function_name": "quicksort",
+    "code": "def quicksort(arr):\n    \"\"\"\n    Sort a list using the QuickSort algorithm (in-place).\n\n    Args:\n        arr (list): List of comparable elements.\n\n    Returns:\n        list: The sorted list (the original list is modified).\n\n    Example:\n        >>> quicksort([3, 6, 8, 10, 1, 2, 1])\n        [1, 1, 2, 3, 6, 8, 10]\n    \"\"\"\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)",
+    "docstring": "Sort a list using the QuickSort algorithm."
+  },
+  {
+    "function_name": "binary_search",
+    "code": "def binary_search(arr, target):\n    \"\"\"\n    Perform binary search on a sorted list.\n\n    Args:\n        arr (list): Sorted list of comparable elements.\n        target: Element to search for.\n\n    Returns:\n        int: Index of target if found, otherwise -1.\n\n    Example:\n        >>> binary_search([1, 2, 3, 4, 5], 3)\n        2\n    \"\"\"\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1",
+    "docstring": "Perform binary search on a sorted list."
+  },
+  {
+    "function_name": "bubble_sort",
+    "code": "def bubble_sort(arr):\n    \"\"\"\n    Sort a list using the Bubble Sort algorithm (in-place).\n\n    Args:\n        arr (list): List of comparable elements.\n\n    Returns:\n        list: The sorted list (the original list is modified).\n\n    Example:\n        >>> bubble_sort([64, 34, 25, 12, 22, 11, 90])\n        [11, 12, 22, 25, 34, 64, 90]\n    \"\"\"\n    n = len(arr)\n    for i in range(n):\n        swapped = False\n        for j in range(0, n - i - 1):\n            if arr[j] > arr[j + 1]:\n                arr[j], arr[j + 1] = arr[j + 1], arr[j]\n                swapped = True\n        if not swapped:\n            break\n    return arr",
+    "docstring": "Sort a list using the Bubble Sort algorithm."
+  },
+  {
+    "function_name": "fibonacci_recursive",
+    "code": "def fibonacci_recursive(n):\n    \"\"\"\n    Return the n-th Fibonacci number (0-indexed) using recursion.\n\n    Args:\n        n (int): Non-negative integer index.\n\n    Returns:\n        int: The n-th Fibonacci number.\n\n    Example:\n        >>> fibonacci_recursive(6)\n        8\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n must be non-negative\")\n    if n <= 1:\n        return n\n    return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)",
+    "docstring": "Return the n-th Fibonacci number using recursion."
+  },
+  {
+    "function_name": "kadane_max_subarray",
+    "code": "def kadane_max_subarray(arr):\n    \"\"\"\n    Find the maximum sum of a contiguous subarray using Kadane's algorithm.\n\n    Args:\n        arr (list): List of integers.\n\n    Returns:\n        int: Maximum subarray sum.\n\n    Example:\n        >>> kadane_max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4])\n        6\n    \"\"\"\n    if not arr:\n        return 0\n    max_so_far = max_ending_here = arr[0]\n    for x in arr[1:]:\n        max_ending_here = max(x, max_ending_here + x)\n        max_so_far = max(max_so_far, max_ending_here)\n    return max_so_far",
+    "docstring": "Find the maximum sum of a contiguous subarray using Kadane's algorithm."
+  },
+  {
+    "function_name": "knapsack_01",
+    "code": "def knapsack_01(weights, values, capacity):\n    \"\"\"\n    Solve the 0/1 knapsack problem using dynamic programming.\n\n    Args:\n        weights (list): List of item weights.\n        values (list): List of item values.\n        capacity (int): Maximum weight capacity.\n\n    Returns:\n        int: Maximum total value that can be achieved.\n\n    Example:\n        >>> knapsack_01([1, 2, 3], [10, 15, 40], 5)\n        55\n    \"\"\"\n    n = len(weights)\n    dp = [[0] * (capacity + 1) for _ in range(n + 1)]\n    for i in range(1, n + 1):\n        for w in range(1, capacity + 1):\n            if weights[i - 1] <= w:\n                dp[i][w] = max(dp[i - 1][w],\n                               dp[i - 1][w - weights[i - 1]] + values[i - 1])\n            else:\n                dp[i][w] = dp[i - 1][w]\n    return dp[n][capacity]",
+    "docstring": "Solve the 0/1 knapsack problem using dynamic programming."
+  },
+  {
+    "function_name": "lcs",
+    "code": "def lcs(str1, str2):\n    \"\"\"\n    Find the length of the longest common subsequence of two strings.\n\n    Args:\n        str1 (str): First string.\n        str2 (str): Second string.\n\n    Returns:\n        int: Length of LCS.\n\n    Example:\n        >>> lcs(\"ABCDGH\", \"AEDFHR\")\n        3\n    \"\"\"\n    m, n = len(str1), len(str2)\n    dp = [[0] * (n + 1) for _ in range(m + 1)]\n    for i in range(1, m + 1):\n        for j in range(1, n + 1):\n            if str1[i - 1] == str2[j - 1]:\n                dp[i][j] = dp[i - 1][j - 1] + 1\n            else:\n                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])\n    return dp[m][n]",
+    "docstring": "Find the length of the longest common subsequence of two strings."
+  },
+  {
+    "function_name": "bfs_shortest_path",
+    "code": "from collections import deque\n\ndef bfs_shortest_path(graph, start, goal):\n    \"\"\"\n    Find the shortest path between two nodes in an unweighted graph using BFS.\n\n    Args:\n        graph (dict): Adjacency list representation.\n        start: Starting node.\n        goal: Goal node.\n\n    Returns:\n        list: Shortest path from start to goal as a list of nodes, or None if not found.\n\n    Example:\n        >>> graph = {1: [2, 3], 2: [4], 3: [4], 4: []}\n        >>> bfs_shortest_path(graph, 1, 4)\n        [1, 2, 4]\n    \"\"\"\n    queue = deque([(start, [start])])\n    visited = {start}\n    while queue:\n        node, path = queue.popleft()\n        if node == goal:\n            return path\n        for neighbor in graph.get(node, []):\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append((neighbor, path + [neighbor]))\n    return None",
+    "docstring": "Find the shortest path between two nodes in an unweighted graph using BFS."
+  },
+  {
+    "function_name": "is_prime",
+    "code": "def is_prime(n):\n    \"\"\"\n    Check if a number is prime.\n\n    Args:\n        n (int): Positive integer.\n\n    Returns:\n        bool: True if n is prime, False otherwise.\n\n    Example:\n        >>> is_prime(17)\n        True\n    \"\"\"\n    if n <= 1:\n        return False\n    if n <= 3:\n        return True\n    if n % 2 == 0 or n % 3 == 0:\n        return False\n    i = 5\n    while i * i <= n:\n        if n % i == 0 or n % (i + 2) == 0:\n            return False\n        i += 6\n    return True",
+    "docstring": "Check if a number is prime."
+  },
+  {
+    "function_name": "merge_sort",
+    "code": "def merge_sort(arr):\n    \"\"\"\n    Sort a list using the Merge Sort algorithm.\n\n    Args:\n        arr (list): List of comparable elements.\n\n    Returns:\n        list: New sorted list.\n\n    Example:\n        >>> merge_sort([38, 27, 43, 3, 9, 82, 10])\n        [3, 9, 10, 27, 38, 43, 82]\n    \"\"\"\n    if len(arr) <= 1:\n        return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    result = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            result.append(left[i])\n            i += 1\n        else:\n            result.append(right[j])\n            j += 1\n    result.extend(left[i:])\n    result.extend(right[j:])\n    return result",
+    "docstring": "Sort a list using the Merge Sort algorithm."
+  }
+]
